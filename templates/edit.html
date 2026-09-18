@@ -2,13 +2,25 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Ubah Status & Tenggat RPM</title>
+    <title>Menu Tindak Lanjut</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div class="container mt-5" style="max-width: 600px;">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="/">Dashboard RPM</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="/">Monitoring</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/input">Tambah RPM</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4" style="max-width: 600px;">
         
-        <!-- Notifikasi Error jika WA salah -->
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
@@ -17,21 +29,21 @@
           {% endif %}
         {% endwith %}
 
-        <div class="card shadow-sm border-primary">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Ubah Data RPM (Otorisasi Auditor)</h5>
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0">Menu Tindak Lanjut RPM</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-4">
                 <form action="/edit/{{ item.id }}" method="POST">
                     
                     <div class="mb-3">
                         <label class="form-label text-muted">Unit Kerja</label>
-                        <input type="text" class="form-control" value="{{ item.unit_kerja }}" disabled>
+                        <input type="text" class="form-control bg-light" value="{{ item.unit_kerja }} (Auditor: {{ item.nama_auditor }})" disabled>
                     </div>
 
                     <!-- UBAH STATUS -->
                     <div class="mb-4">
-                        <label class="form-label fw-bold">Status RPM Saat Ini</label>
+                        <label class="form-label fw-bold">Ubah Status Tindak Lanjut</label>
                         <select class="form-select border-primary" name="status" required>
                             <option value="Dalam Pemantauan" {% if item.status == 'Dalam Pemantauan' %}selected{% endif %}>Dalam Pemantauan</option>
                             <option value="Belum Memadai" {% if item.status == 'Belum Memadai' %}selected{% endif %}>Belum Memadai</option>
@@ -44,16 +56,15 @@
                     <!-- UBAH TENGGAT WAKTU -->
                     <div class="mb-3">
                         <label class="form-label fw-bold">Tenggat Waktu</label>
-                        <input type="date" class="form-control" id="tenggat_waktu" name="tenggat_waktu" value="{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}" required>
-                        <small class="text-muted">*Ubah tanggal jika ada Kesepakatan Ulang</small>
+                        <input type="date" class="form-control w-50" id="tenggat_waktu" name="tenggat_waktu" value="{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}" required>
                     </div>
 
                     <!-- Form BA (Tersembunyi secara default) -->
                     <div id="ba_section" class="p-3 mb-4 bg-warning bg-opacity-25 border border-warning rounded" style="display: none;">
-                        <h6 class="text-danger fw-bold">Peringatan: Perubahan Tenggat Waktu Terdeteksi</h6>
+                        <h6 class="text-danger fw-bold">Perubahan Tenggat Terdeteksi</h6>
                         <div class="mb-2">
                             <label class="form-label">Nomor Berita Acara (BA)</label>
-                            <input type="text" class="form-control" id="no_ba" name="no_ba" placeholder="Contoh: BA-123/2026">
+                            <input type="text" class="form-control" id="no_ba" name="no_ba">
                         </div>
                         <div class="mb-2">
                             <label class="form-label">Tanggal Berita Acara</label>
@@ -63,23 +74,22 @@
 
                     <hr>
 
-                    <!-- OTORISASI AUDITOR -->
+                    <!-- OTORISASI PASSWORD -->
                     <div class="mb-4 p-3 bg-secondary bg-opacity-10 rounded">
-                        <label class="form-label fw-bold">Kunci Otorisasi</label>
-                        <input type="text" class="form-control border-dark" name="wa_otorisasi" placeholder="Masukkan No. WA Auditor Anda" required>
-                        <small class="text-danger">Aksi hanya diproses jika No. WA cocok dengan data pembuat awal.</small>
+                        <label class="form-label fw-bold">Otorisasi Perubahan</label>
+                        <input type="password" class="form-control border-dark" name="password_otorisasi" placeholder="Masukkan Password Akun Anda" required>
+                        <small class="text-muted">Status perubahan akan memicu notifikasi WA ke Tim Audit & Auditee.</small>
                     </div>
 
                     <div class="d-flex justify-content-between">
                         <a href="/" class="btn btn-secondary">Batal</a>
-                        <button type="submit" class="btn btn-success fw-bold">Verifikasi & Simpan</button>
+                        <button type="submit" class="btn btn-success fw-bold">Update Data & Kirim WA</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Script JavaScript untuk memunculkan input BA jika tanggal diubah -->
     <script>
         const originalDate = "{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}";
         const dateInput = document.getElementById('tenggat_waktu');
