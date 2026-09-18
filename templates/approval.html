@@ -8,7 +8,7 @@
     <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; } .bg-mentari { background-color: #71C5E8 !important; color: #000; }</style>
 </head>
 <body class="bg-light">
-    <!-- Navbar sama dengan index.html -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
@@ -32,12 +32,27 @@
                     <div class="col-md-8">
                         <h5 class="fw-bold text-nusantara">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6">{{ item.jenis_audit }}</span></h5>
                         <p class="mb-1 text-muted">Diusulkan oleh Auditor: <strong>{{ item.nama_auditor }}</strong></p>
+                        
+                        <!-- ==== INI ADALAH BAGIAN LANGKAH 3 YANG SUDAH DIMASUKKAN ==== -->
                         <div class="bg-light p-2 rounded mt-2 border">
                             <strong>Perubahan Status:</strong> <span class="text-danger">{{ item.status }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_status }}</span><br>
                             {% if item.file_bukti %}
-                            <strong class="text-primary mt-2 d-block">📄 File Bukti Terlampir: <a href="/uploads/{{ item.file_bukti }}" target="_blank" class="fw-bold text-decoration-none bg-info bg-opacity-25 px-2 py-1 rounded">Lihat Dokumen</a></strong>
+                            <strong class="text-primary mt-1 d-block">📄 Bukti Status: <a href="/uploads/{{ item.file_bukti }}" target="_blank" class="fw-bold text-decoration-none bg-info bg-opacity-25 px-2 py-1 rounded">Lihat Dokumen Status</a></strong>
+                            {% endif %}
+                            
+                            <!-- Area Notifikasi Perubahan Tanggal & File BA -->
+                            {% if item.usulan_tenggat != item.tenggat_waktu %}
+                            <hr class="my-2">
+                            <strong>Perubahan Tenggat:</strong> <span class="text-danger">{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_tenggat.strftime('%d-%m-%Y') }}</span><br>
+                            <span class="text-muted d-block mt-1">Dasar: BA No. <strong>{{ item.no_ba_kesepakatan }}</strong> (Tgl: {{ item.tgl_ba_kesepakatan.strftime('%d-%m-%Y') }})</span>
+                            
+                            {% if item.file_ba_kesepakatan %}
+                            <strong class="text-primary mt-1 d-block">📄 File Berita Acara: <a href="/uploads/{{ item.file_ba_kesepakatan }}" target="_blank" class="fw-bold text-decoration-none bg-warning bg-opacity-50 text-dark px-2 py-1 rounded">Buka File BA Kesepakatan</a></strong>
+                            {% endif %}
                             {% endif %}
                         </div>
+                        <!-- ========================================================== -->
+                        
                     </div>
                     <div class="col-md-4 text-end">
                         <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
