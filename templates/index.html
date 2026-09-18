@@ -12,6 +12,10 @@
         .text-nusantara { color: #0857C3 !important; }
         .text-mentari { color: #71C5E8 !important; }
         .table-header { color: #0857C3 !important; font-weight: bold; border-bottom: 2px solid #0857C3; }
+        /* Fitur Baris Klik */
+        .clickable-row { cursor: pointer; transition: background-color 0.2s; }
+        .clickable-row:hover { background-color: #f1f3f5 !important; }
+        .badge-notif { font-size: 0.85em; transform: translateY(-2px); margin-left: 5px; }
     </style>
 </head>
 <body class="bg-light">
@@ -25,13 +29,22 @@
                     {% if session['role'] == 'auditor' %}
                     <li class="nav-item"><a class="nav-link text-white" href="/input">Tambah RPM</a></li>
                     {% elif session['role'] == 'ketuatim' %}
-                    <li class="nav-item"><a class="nav-link text-warning fw-bold" href="/approval">Menu Approval</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white fw-bold d-flex align-items-center" href="/approval">
+                            Menu Approval 
+                            {% if pending_count > 0 %}
+                            <span class="badge bg-danger rounded-pill badge-notif">🔔 {{ pending_count }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary rounded-pill badge-notif">🔔 0</span>
+                            {% endif %}
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
                 
-                <!-- Center Info Role -->
-                <div class="mx-auto text-warning fw-bold text-uppercase px-3 py-1 bg-dark rounded">
-                    Anda Login Sebagai: {{ 'Ketua Tim Audit' if session['role'] == 'ketuatim' else 'Auditor' }}
+                <!-- Center Info Role (Diubah ke Warna Nusantara Blue) -->
+                <div class="mx-auto text-white fw-bold text-uppercase px-4 py-2 bg-nusantara border border-white rounded shadow-sm">
+                    LOGIN AS: {{ 'KETUA TIM AUDIT' if session['role'] == 'ketuatim' else 'AUDITOR' }}
                 </div>
 
                 <div class="d-flex text-white align-items-center ms-auto">
@@ -59,20 +72,21 @@
                     </thead>
                     <tbody>
                         {% for item in data %}
-                        <tr>
-                            <td><strong>{{ item.jenis_audit }}</strong></td>
-                            <td>{{ item.unit_kerja }}</td>
-                            <td>{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
-                            <td>
+                        <!-- Warna merah jika sisa_hari < 14 -->
+                        <tr class="clickable-row {% if item.sisa_hari < 14 and item.status != 'Memadai' %}table-danger{% endif %}">
+                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.jenis_audit }}</strong></td>
+                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.unit_kerja }}</td>
+                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
+                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">
                                 {% if item.status == 'Memadai' %}<span class="text-success fw-bold">Selesai</span>
                                 {% elif item.sisa_hari < 0 %}<span class="text-danger fw-bold">Lewat {{ item.sisa_hari|abs }} Hari</span>
                                 {% else %}<span class="fw-bold text-nusantara">{{ item.sisa_hari }} Hari</span>{% endif %}
                             </td>
-                            <td>
+                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">
                                 <span class="badge {% if item.status == 'Memadai' %} bg-success {% elif item.status == 'Belum Memadai' %} bg-danger {% else %} bg-warning text-dark {% endif %}">{{ item.status }}</span>
                                 {% if item.status_approval == 'Menunggu Approval' %}<br><span class="badge bg-secondary mt-1">⏳ Menunggu Persetujuan</span>{% endif %}
                             </td>
-                            <td>{{ item.nama_auditor }}</td>
+                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.nama_auditor }}</td>
                             <td>
                                 {% if session['role'] == 'auditor' %}
                                 <a href="/edit/{{ item.id }}" class="btn btn-sm btn-secondary fw-bold text-white">Tindak Lanjut</a>
@@ -87,5 +101,30 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Pop-up (Diletakkan di luar tabel agar struktur rapi) -->
+    {% for item in data %}
+    <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+          <div class="modal-header bg-cakrawala text-white">
+            <h5 class="modal-title fw-bold">Rincian RPM: {{ item.unit_kerja }}</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <h6 class="fw-bold text-nusantara">Deskripsi Tindak Lanjut:</h6>
+            <p class="border border-info p-2 rounded bg-light text-dark">{{ item.deskripsi }}</p>
+            <h6 class="fw-bold text-nusantara mt-3">Kontak Auditee:</h6>
+            <table class="table table-sm text-dark">
+                <tr><td>Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
+                <tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
