@@ -5,27 +5,22 @@
     <title>Persetujuan RPM</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .bg-nusantara { background-color: #0857C3 !important; }
-        .bg-mentari { background-color: #71C5E8 !important; color: #000; }
-    </style>
+    <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; } .bg-mentari { background-color: #71C5E8 !important; color: #000; }</style>
 </head>
 <body class="bg-light">
+    <!-- Navbar sama dengan index.html -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="/">Dashboard RPM</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="/">Monitoring</a></li>
-                    <li class="nav-item"><a class="nav-link active fw-bold text-warning" href="/approval">Menu Approval</a></li>
-                </ul>
+            <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
+            <div class="d-flex text-white align-items-center ms-auto">
+                <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
+                <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
             </div>
         </div>
     </nav>
 
     <div class="container">
-        <h4 class="fw-bold mb-4" style="color: #0857C3;">Daftar Menunggu Persetujuan Ketua Tim</h4>
+        <h4 class="fw-bold mb-4 text-nusantara">Daftar Menunggu Persetujuan Ketua Tim</h4>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
@@ -35,20 +30,50 @@
             <div class="card-body">
                 <div class="row align-items-center">
                     <div class="col-md-8">
-                        <h5 class="fw-bold">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6">{{ item.jenis_audit }}</span></h5>
+                        <h5 class="fw-bold text-nusantara">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6">{{ item.jenis_audit }}</span></h5>
                         <p class="mb-1 text-muted">Diusulkan oleh Auditor: <strong>{{ item.nama_auditor }}</strong></p>
                         <div class="bg-light p-2 rounded mt-2 border">
                             <strong>Perubahan Status:</strong> <span class="text-danger">{{ item.status }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_status }}</span><br>
-                            {% if item.usulan_tenggat != item.tenggat_waktu %}
-                            <strong>Perubahan Tenggat:</strong> <span class="text-danger">{{ item.tenggat_waktu }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_tenggat }}</span> (BA: {{ item.no_ba_kesepakatan }})
+                            {% if item.file_bukti %}
+                            <strong class="text-primary mt-2 d-block">📄 File Bukti Terlampir: <a href="/uploads/{{ item.file_bukti }}" target="_blank" class="fw-bold text-decoration-none bg-info bg-opacity-25 px-2 py-1 rounded">Lihat Dokumen</a></strong>
                             {% endif %}
                         </div>
                     </div>
                     <div class="col-md-4 text-end">
-                        <a href="/approve/{{ item.id }}/tolak" class="btn btn-outline-danger fw-bold me-2">Tolak</a>
-                        <!-- Saat disetujui, sistem akan mengubah data dan memicu Notif WA -->
-                        <a href="/approve/{{ item.id }}/terima" class="btn btn-success fw-bold" onclick="return confirm('Setujui usulan? Notifikasi WA akan dikirim ke Auditor dan PIC.')">Setujui & Kirim WA</a>
+                        <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="tolak">
+                            <input type="hidden" name="password_otorisasi" value="tolak_tanpa_password_sementara"> 
+                            <!-- Tolak tidak butuh pass untuk kemudahan -->
+                            <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
+                        </form>
+                        
+                        <!-- Tombol Setuju Memunculkan Modal Password -->
+                        <button class="btn btn-success fw-bold bg-nusantara" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui</button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Otorisasi Password Ketua Tim -->
+        <div class="modal fade" id="modalApprove{{ item.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-nusantara text-white">
+                        <h5 class="modal-title fw-bold">Otorisasi Persetujuan</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="/process_approval/{{ item.id }}" method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="action" value="terima">
+                            <p class="text-dark">Dengan menyetujui, notifikasi WhatsApp akan dikirimkan kepada <strong>Auditor</strong> dan <strong>PIC (Auditee)</strong> secara otomatis.</p>
+                            <label class="fw-bold text-nusantara">Masukkan Password Akun Anda (Ketua Tim):</label>
+                            <input type="password" class="form-control border-primary mt-2" name="password_otorisasi" required>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-success fw-bold bg-nusantara">Verifikasi & Setujui</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -58,5 +83,6 @@
         </div>
         {% endfor %}
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
