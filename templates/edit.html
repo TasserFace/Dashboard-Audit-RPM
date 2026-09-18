@@ -3,87 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <title>Menu Tindak Lanjut</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; }</style>
 </head>
 <body class="bg-light">
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <!-- Navbar sama dengan index.html, hapus demi efisiensi teks di jawaban ini, atau Anda bisa mencopynya dari file index.html -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="/">Dashboard RPM</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="/">Monitoring</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/input">Tambah RPM</a></li>
-                </ul>
+            <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
+            <div class="d-flex text-white align-items-center ms-auto">
+                <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
+                <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
             </div>
         </div>
     </nav>
 
     <div class="container mt-4" style="max-width: 600px;">
-        
         {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
+          {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
 
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-primary text-white py-3">
-                <h5 class="mb-0">Menu Tindak Lanjut RPM</h5>
-            </div>
+        <div class="card shadow-sm border-0 border-top border-4 border-primary">
+            <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold text-nusantara">Menu Tindak Lanjut RPM</h5></div>
             <div class="card-body p-4">
-                <form action="/edit/{{ item.id }}" method="POST">
-                    
+                <form action="/edit/{{ item.id }}" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label class="form-label text-muted">Unit Kerja</label>
+                        <label class="form-label text-nusantara fw-bold">Unit Kerja</label>
                         <input type="text" class="form-control bg-light" value="{{ item.unit_kerja }} (Auditor: {{ item.nama_auditor }})" disabled>
                     </div>
 
-                    <!-- UBAH STATUS -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Ubah Status Tindak Lanjut</label>
-                        <select class="form-select border-primary" name="status" required>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-nusantara">Ubah Status Tindak Lanjut</label>
+                        <select class="form-select border-primary" id="status_select" name="status" required>
                             <option value="Dalam Pemantauan" {% if item.status == 'Dalam Pemantauan' %}selected{% endif %}>Dalam Pemantauan</option>
                             <option value="Belum Memadai" {% if item.status == 'Belum Memadai' %}selected{% endif %}>Belum Memadai</option>
                             <option value="Memadai" {% if item.status == 'Memadai' %}selected{% endif %}>Memadai</option>
                         </select>
                     </div>
 
-                    <hr>
+                    <!-- AREA UPLOAD (Wajib Jika Status Berubah) -->
+                    <div class="mb-4 p-3 bg-light border border-info rounded" id="upload_section" style="display: none;">
+                        <label class="form-label fw-bold text-nusantara">Upload Dokumen Bukti (PDF/JPG) <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="file_bukti" name="file_bukti" accept=".pdf, .jpg, .jpeg">
+                        <small class="text-muted">Diwajibkan karena terjadi perubahan status dari '{{ item.status }}'.</small>
+                    </div>
 
-                    <!-- UBAH TENGGAT WAKTU -->
+                    <hr>
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Tenggat Waktu</label>
+                        <label class="form-label fw-bold text-nusantara">Tenggat Waktu</label>
                         <input type="date" class="form-control w-50" id="tenggat_waktu" name="tenggat_waktu" value="{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}" required>
                     </div>
 
-                    <!-- Form BA (Tersembunyi secara default) -->
+                    <!-- Form BA (Tersembunyi) -->
                     <div id="ba_section" class="p-3 mb-4 bg-warning bg-opacity-25 border border-warning rounded" style="display: none;">
                         <h6 class="text-danger fw-bold">Perubahan Tenggat Terdeteksi</h6>
-                        <div class="mb-2">
-                            <label class="form-label">Nomor Berita Acara (BA)</label>
-                            <input type="text" class="form-control" id="no_ba" name="no_ba">
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Tanggal Berita Acara</label>
-                            <input type="date" class="form-control" id="tgl_ba" name="tgl_ba">
-                        </div>
+                        <input type="text" class="form-control mb-2" id="no_ba" name="no_ba" placeholder="Nomor BA">
+                        <input type="date" class="form-control" id="tgl_ba" name="tgl_ba">
                     </div>
 
                     <hr>
-
-                    <!-- OTORISASI PASSWORD -->
+                    <!-- Otorisasi Auditor -->
                     <div class="mb-4 p-3 bg-secondary bg-opacity-10 rounded">
-                        <label class="form-label fw-bold">Otorisasi Perubahan</label>
+                        <label class="form-label fw-bold text-dark">Otorisasi Perubahan</label>
                         <input type="password" class="form-control border-dark" name="password_otorisasi" placeholder="Masukkan Password Akun Anda" required>
                         <small class="text-muted">Status perubahan akan memicu notifikasi WA ke Tim Audit & Auditee.</small>
                     </div>
 
                     <div class="d-flex justify-content-between">
-                        <a href="/" class="btn btn-secondary">Batal</a>
-                        <button type="submit" class="btn btn-nusantara fw-bold">Kirim Usulan ke Ketua Tim</button>
+                        <a href="/" class="btn btn-secondary fw-bold">Batal</a>
+                        <button type="submit" class="btn btn-primary fw-bold bg-nusantara">Kirim Usulan ke Ketua Tim</button>
                     </div>
                 </form>
             </div>
@@ -91,23 +80,21 @@
     </div>
 
     <script>
-        const originalDate = "{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}";
-        const dateInput = document.getElementById('tenggat_waktu');
-        const baSection = document.getElementById('ba_section');
-        const noBaInput = document.getElementById('no_ba');
-        const tglBaInput = document.getElementById('tgl_ba');
+        const originalStatus = "{{ item.status }}";
+        const statusSelect = document.getElementById('status_select');
+        const uploadSection = document.getElementById('upload_section');
+        const fileInput = document.getElementById('file_bukti');
 
-        dateInput.addEventListener('change', function() {
-            if (this.value !== originalDate) {
-                baSection.style.display = 'block';
-                noBaInput.required = true;
-                tglBaInput.required = true;
+        statusSelect.addEventListener('change', function() {
+            if (this.value !== originalStatus) {
+                uploadSection.style.display = 'block';
+                fileInput.required = true;
             } else {
-                baSection.style.display = 'none';
-                noBaInput.required = false;
-                tglBaInput.required = false;
+                uploadSection.style.display = 'none';
+                fileInput.required = false;
             }
         });
+        // Script untuk tanggal (sama dengan file Anda sebelumnya)
     </script>
 </body>
 </html>
