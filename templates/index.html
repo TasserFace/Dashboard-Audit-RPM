@@ -15,6 +15,9 @@
         .clickable-row { cursor: pointer; transition: background-color 0.2s; }
         .clickable-row:hover { background-color: #f1f3f5 !important; }
         .badge-notif { font-size: 0.85em; transform: translateY(-2px); margin-left: 5px; }
+        
+        /* Transisi halus untuk panel filter */
+        #filterPanel { transition: all 0.3s ease-in-out; }
     </style>
 </head>
 <body class="bg-light">
@@ -62,9 +65,58 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="fw-bold mb-0 text-nusantara">Daftar Rencana Perbaikan Manajemen</h4>
             
-            <!-- Kolom Search/Filter -->
-            <div class="w-25">
-                <input type="text" id="searchInput" class="form-control border-primary shadow-sm" placeholder="🔍 Cari Data RPM...">
+            <!-- Kolom Search Cepat & Tombol Filter -->
+            <div class="d-flex w-50 justify-content-end">
+                <input type="text" id="searchInput" class="form-control border-primary shadow-sm w-50 filter-input me-2" placeholder="🔍 Cari Bebas...">
+                <button class="btn btn-primary fw-bold shadow-sm bg-nusantara" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel">
+                    ⚙️ Filter Spesifik
+                </button>
+            </div>
+        </div>
+
+        <!-- PANEL FILTER BERTINGKAT (Collapse) -->
+        <div class="collapse mb-4" id="filterPanel">
+            <div class="card card-body shadow-sm border-0 border-start border-4 border-primary bg-light">
+                <h6 class="fw-bold text-nusantara mb-3">Filter Pencarian Detail</h6>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label text-muted fw-bold small">Nomor LHA</label>
+                        <input type="text" id="f_lha" class="form-control form-control-sm border-primary filter-input" placeholder="Ketik No LHA...">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-muted fw-bold small">Unit Kerja</label>
+                        <input type="text" id="f_unit" class="form-control form-control-sm border-primary filter-input" placeholder="Ketik Unit Kerja...">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted fw-bold small">Sisa Hari</label>
+                        <select id="f_sisa" class="form-select form-select-sm border-primary filter-input">
+                            <option value="">Semua Kondisi</option>
+                            <option value="kritis">Kritis (≤ 14 Hari)</option>
+                            <option value="terlewat">Terlewat (< 0 Hari)</option>
+                            <option value="aman">Aman (> 14 Hari)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted fw-bold small">Status</label>
+                        <select id="f_status" class="form-select form-select-sm border-primary filter-input">
+                            <option value="">Semua Status</option>
+                            <option value="Dalam Pemantauan">Dalam Pemantauan</option>
+                            <option value="Belum Memadai">Belum Memadai</option>
+                            <option value="Memadai">Memadai</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label text-muted fw-bold small">Kesepakatan Ulang (BA)</label>
+                        <select id="f_ba" class="form-select form-select-sm border-primary filter-input">
+                            <option value="">Semua</option>
+                            <option value="yes">Pernah Diubah (Ada BA)</option>
+                            <option value="no">Belum Pernah Diubah</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="button" id="btnResetFilter" class="btn btn-sm btn-outline-secondary fw-bold">Reset Filter</button>
+                </div>
             </div>
         </div>
 
@@ -73,13 +125,29 @@
                 <table class="table align-middle mb-0 text-nusantara" id="rpmTable">
                     <thead>
                         <tr>
-                            <th class="table-header">Jenis Audit</th><th class="table-header">Unit Kerja</th><th class="table-header">Tenggat Waktu</th>
-                            <th class="table-header">Sisa Hari</th><th class="table-header text-dark">Status</th><th class="table-header">Auditor</th><th class="table-header">Aksi</th>
+                            <!-- MENAMBAHKAN KOLOM NO LHA -->
+                            <th class="table-header">No. LHA</th>
+                            <th class="table-header">Jenis Audit</th>
+                            <th class="table-header">Unit Kerja</th>
+                            <th class="table-header">Tenggat Waktu</th>
+                            <th class="table-header">Sisa Hari</th>
+                            <th class="table-header text-dark">Status</th>
+                            <th class="table-header">Auditor</th>
+                            <th class="table-header">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in data %}
-                        <tr class="clickable-row {% if item.sisa_hari < 14 and item.status != 'Memadai' %}table-danger{% endif %}">
+                        <!-- Menambahkan atribut 'data-...' untuk mempermudah deteksi filter JS -->
+                        <tr class="clickable-row filter-row {% if item.sisa_hari < 14 and item.status != 'Memadai' %}table-danger{% endif %}"
+                            data-lha="{{ item.no_lha|lower }}"
+                            data-unit="{{ item.unit_kerja|lower }}"
+                            data-sisa="{{ item.sisa_hari }}"
+                            data-status="{{ item.status }}"
+                            data-ba="{% if item.no_ba_kesepakatan %}yes{% else %}no{% endif %}">
+                            
+                            <!-- DATA TABEL -->
+                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.no_lha }}</strong></td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.jenis_audit }}</strong></td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.unit_kerja }}</td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
@@ -104,6 +172,10 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                <!-- Pesan Data Kosong -->
+                <div id="noDataMessage" class="text-center py-4 text-muted fw-bold" style="display: none;">
+                    Tidak ada data yang cocok dengan kriteria pencarian/filter.
+                </div>
             </div>
         </div>
     </div>
@@ -131,7 +203,7 @@
                 <tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
             </table>
 
-            <!-- ==== INI ADALAH BAGIAN LANGKAH 4 (Riwayat BA) ==== -->
+            <!-- Riwayat BA -->
             {% if item.no_ba_kesepakatan %}
             <h6 class="fw-bold text-nusantara mt-3">Riwayat Kesepakatan Ulang (BA):</h6>
             <div class="border border-warning p-2 rounded bg-light text-dark">
@@ -141,7 +213,6 @@
                 {% endif %}
             </div>
             {% endif %}
-            <!-- =================================================== -->
 
           </div>
         </div>
@@ -149,17 +220,66 @@
     </div>
     {% endfor %}
 
-    <!-- Script JavaScript untuk Fitur Pencarian Real-Time -->
+    <!-- Script JavaScript untuk Fitur Pencarian Real-Time & Filter Bertingkat -->
     <script>
-        document.getElementById("searchInput").addEventListener("keyup", function() {
-            let filter = this.value.toLowerCase();
-            let rows = document.querySelectorAll("#rpmTable tbody tr");
+        function applyFilters() {
+            // Ambil semua nilai dari input filter
+            let globalSearch = document.getElementById("searchInput").value.toLowerCase();
+            let f_lha = document.getElementById("f_lha").value.toLowerCase();
+            let f_unit = document.getElementById("f_unit").value.toLowerCase();
+            let f_sisa = document.getElementById("f_sisa").value;
+            let f_status = document.getElementById("f_status").value;
+            let f_ba = document.getElementById("f_ba").value;
+
+            let rows = document.querySelectorAll(".filter-row");
+            let visibleCount = 0;
             
             rows.forEach(row => {
                 let textData = row.innerText.toLowerCase();
-                // Jika teks pencarian cocok dengan isi baris, tampilkan; jika tidak, sembunyikan
-                row.style.display = textData.includes(filter) ? "" : "none";
+                
+                // Ambil data atribut dari baris tabel
+                let r_lha = row.getAttribute("data-lha");
+                let r_unit = row.getAttribute("data-unit");
+                let r_status = row.getAttribute("data-status");
+                let r_ba = row.getAttribute("data-ba");
+                let r_sisa = parseInt(row.getAttribute("data-sisa"));
+
+                // Logika pencocokan (Match)
+                let matchGlobal = textData.includes(globalSearch);
+                let matchLha = r_lha.includes(f_lha);
+                let matchUnit = r_unit.includes(f_unit);
+                let matchStatus = f_status === "" || r_status === f_status;
+                let matchBa = f_ba === "" || r_ba === f_ba;
+                
+                // Logika Kondisi Sisa Hari
+                let matchSisa = true;
+                if (f_sisa === "kritis") { matchSisa = (r_sisa >= 0 && r_sisa <= 14); } 
+                else if (f_sisa === "terlewat") { matchSisa = (r_sisa < 0); } 
+                else if (f_sisa === "aman") { matchSisa = (r_sisa > 14); }
+
+                // Tampilkan baris jika SEMUA kondisi filter terpenuhi (Logika AND)
+                if (matchGlobal && matchLha && matchUnit && matchStatus && matchBa && matchSisa) {
+                    row.style.display = "";
+                    visibleCount++;
+                } else {
+                    row.style.display = "none";
+                }
             });
+
+            // Tampilkan pesan jika tidak ada data yang cocok
+            document.getElementById("noDataMessage").style.display = (visibleCount === 0) ? "block" : "none";
+        }
+
+        // Pasang pendengar (listener) ke semua input filter
+        document.querySelectorAll(".filter-input").forEach(el => {
+            el.addEventListener("input", applyFilters);
+            el.addEventListener("change", applyFilters);
+        });
+
+        // Tombol Reset Filter
+        document.getElementById("btnResetFilter").addEventListener("click", function() {
+            document.querySelectorAll(".filter-input").forEach(el => { el.value = ""; });
+            applyFilters();
         });
     </script>
 
