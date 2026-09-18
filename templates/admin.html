@@ -6,32 +6,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; color: #0857C3; }
-        .bg-nusantara { background-color: #0857C3 !important; }
-        .bg-cakrawala { background-color: #307FE2 !important; }
+        body { font-family: 'Inter', sans-serif; color: #0857C3; } 
+        .bg-nusantara { background-color: #0857C3 !important; } 
+        .bg-cakrawala { background-color: #307FE2 !important; } 
+        .text-nusantara { color: #0857C3 !important; } 
         .btn-nusantara { background-color: #0857C3; color: white; border: none; }
-        .text-nusantara { color: #0857C3 !important; }
     </style>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="/admin">Dashboard Super Admin</a>
-            <div class="d-flex text-white align-items-center">
+            <a class="navbar-brand fw-bold text-white" href="/admin">Dashboard Super Admin</a>
+            <div class="d-flex text-white align-items-center ms-auto">
                 <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
                 <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
             </div>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container-fluid px-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
         
         <div class="row">
+            <!-- FORM TAMBAH USER -->
             <div class="col-md-4">
-                <div class="card shadow-sm border-0">
+                <div class="card shadow-sm border-0 border-start border-4 border-primary">
                     <div class="card-header bg-cakrawala text-white fw-bold">Tambah User Baru</div>
                     <div class="card-body">
                         <form action="/admin" method="POST">
@@ -44,35 +45,80 @@
                                 <input type="text" class="form-control" name="username" required>
                             </div>
                             <div class="mb-3">
-                                <label class="fw-bold text-nusantara">Password</label>
-                                <input type="password" class="form-control" name="password" required>
+                                <label class="fw-bold text-nusantara">No. WhatsApp</label>
+                                <input type="text" class="form-control" name="no_wa" placeholder="0812xxx (U/ Lupa Password)" required>
                             </div>
                             <div class="mb-3">
+                                <label class="fw-bold text-nusantara">Password Awal</label>
+                                <input type="password" class="form-control" name="password" required>
+                            </div>
+                            <div class="mb-4">
                                 <label class="fw-bold text-nusantara">Kewenangan (Role)</label>
-                                <select class="form-select" name="role" required>
+                                <select class="form-select border-primary" name="role" required>
                                     <option value="superadmin">Super Admin</option>
                                     <option value="auditor">Auditor</option>
                                     <option value="ketuatim">Ketua Tim Audit</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-nusantara w-100 fw-bold">Simpan User</button>
+                            <button type="submit" class="btn btn-nusantara w-100 fw-bold">Simpan User (Hash Tersandi)</button>
                         </form>
                     </div>
                 </div>
             </div>
+
+            <!-- TABEL USER -->
             <div class="col-md-8">
                 <div class="card shadow-sm border-0">
-                    <div class="card-header bg-dark text-white fw-bold">Daftar User Sistem</div>
+                    <div class="card-header bg-dark text-white fw-bold">Daftar User Sistem & Keamanan</div>
                     <div class="card-body p-0">
-                        <table class="table mb-0">
-                            <thead><tr><th class="text-nusantara">Nama Lengkap</th><th class="text-nusantara">Username (PN)</th><th class="text-nusantara">Role</th></tr></thead>
+                        <table class="table mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th class="text-nusantara">Nama</th>
+                                    <th class="text-nusantara">Username(PN)</th>
+                                    <th class="text-nusantara">No. WA</th>
+                                    <th class="text-nusantara">Role</th>
+                                    <th class="text-nusantara text-center">Aksi (Keamanan)</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 {% for u in users %}
                                 <tr>
                                     <td class="fw-bold text-nusantara">{{ u.nama_lengkap }}</td>
                                     <td>{{ u.username }}</td>
+                                    <td>{{ u.no_wa }}</td>
                                     <td><span class="badge bg-secondary">{{ u.role }}</span></td>
+                                    <td class="text-center">
+                                        <!-- Tombol Pemicu Modal Reset Password -->
+                                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold" data-bs-toggle="modal" data-bs-target="#modalReset{{ u.id }}">
+                                            Reset Password
+                                        </button>
+                                    </td>
                                 </tr>
+
+                                <!-- Modal Reset Password Admin -->
+                                <div class="modal fade" id="modalReset{{ u.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title fw-bold">Manual Reset Password</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="/admin/reset_password/{{ u.id }}" method="POST">
+                                                <div class="modal-body text-start">
+                                                    <p class="text-dark">Ubah password untuk user: <strong>{{ u.nama_lengkap }} ({{ u.username }})</strong></p>
+                                                    <label class="fw-bold text-danger">Ketik Password Baru:</label>
+                                                    <input type="text" class="form-control border-danger mt-1" name="new_password" placeholder="Contoh: 123456" required>
+                                                    <small class="text-muted">Password akan langsung di-enkripsi (hashed) setelah disimpan.</small>
+                                                </div>
+                                                <div class="modal-footer border-0">
+                                                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+                                                    <button type="submit" class="btn btn-danger fw-bold">Reset Sekarang</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -81,5 +127,6 @@
             </div>
         </div>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
