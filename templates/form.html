@@ -2,33 +2,47 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Input RPM Baru</title>
+    <title>Tambah RPM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div class="container mt-5" style="max-width: 700px;">
-        <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Form Input Rencana Perbaikan Manajemen</h5>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="/">Dashboard RPM</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="/">Monitoring</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/input">Tambah RPM</a></li>
+                </ul>
             </div>
-            <div class="card-body">
+        </div>
+    </nav>
+
+    <div class="container mb-5" style="max-width: 800px;">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0">Form Tambah Rencana Perbaikan Manajemen</h5>
+            </div>
+            <div class="card-body p-4">
                 <form action="/input" method="POST">
                     
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Jenis Audit</label>
-                        <select class="form-select" name="jenis_audit" required>
-                            <option value="" disabled selected>-- Pilih Jenis Audit --</option>
-                            <option value="Reguler Audit">Reguler Audit</option>
-                            <option value="Spesial Audit">Spesial Audit</option>
-                            <option value="Surprise Audit">Surprise Audit</option>
-                            <option value="Investigatif Audit">Investigatif Audit</option>
-                            <option value="Tematik Audit">Tematik Audit</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Unit Kerja</label>
-                        <input type="text" class="form-control" name="unit_kerja" required>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Jenis Audit</label>
+                            <select class="form-select" name="jenis_audit" required>
+                                <option value="" disabled selected>-- Pilih Jenis Audit --</option>
+                                <option value="Reguler Audit">Reguler Audit</option>
+                                <option value="Spesial Audit">Spesial Audit</option>
+                                <option value="Surprise Audit">Surprise Audit</option>
+                                <option value="Investigatif Audit">Investigatif Audit</option>
+                                <option value="Tematik Audit">Tematik Audit</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Unit Kerja</label>
+                            <input type="text" class="form-control" name="unit_kerja" required>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
@@ -38,27 +52,48 @@
 
                     <div class="mb-4">
                         <label class="form-label fw-bold">Tenggat Waktu Awal</label>
-                        <input type="date" class="form-control" name="tenggat_waktu" required>
+                        <input type="date" class="form-control w-50" name="tenggat_waktu" required>
+                    </div>
+
+                    <hr class="mb-4">
+                    <h6 class="fw-bold text-primary mb-3">Informasi Kontak & Entitas</h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Nama PIC (Auditee)</label>
+                            <input type="text" class="form-control" name="nama_pic" required>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">No. WA PIC (Auditee)</label>
+                            <input type="text" class="form-control" name="wa_auditee" required placeholder="0812xxx">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Nama Auditor (PIC RPM)</label>
+                            <input type="text" class="form-control" name="nama_auditor" required>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">No. WA Auditor</label>
+                            <input type="text" class="form-control" name="wa_auditor" required placeholder="0813xxx">
+                        </div>
                     </div>
 
                     <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">WA Auditee (PIC)</label>
-                            <input type="text" class="form-control" name="wa_auditee" required>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">Nama Ketua Tim Audit</label>
+                            <input type="text" class="form-control" name="nama_ketua_tim" required>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">WA Auditor</label>
-                            <input type="text" class="form-control" name="wa_auditor" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">WA Ketua Tim</label>
-                            <input type="text" class="form-control" name="wa_ketua_tim" required>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label">No. WA Ketua Tim Audit</label>
+                            <input type="text" class="form-control" name="wa_ketua_tim" required placeholder="0856xxx">
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between">
-                        <a href="/" class="btn btn-secondary">Kembali</a>
-                        <button type="submit" class="btn btn-primary">Simpan Data</button>
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="/" class="btn btn-secondary">Batal</a>
+                        <button type="submit" class="btn btn-primary px-4 fw-bold">Simpan RPM</button>
                     </div>
                 </form>
             </div>
