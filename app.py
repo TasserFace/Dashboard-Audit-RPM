@@ -1,24 +1,24 @@
 from flask import Flask, render_template, request, redirect, flash, session, url_for, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 from sqlalchemy.exc import IntegrityError
 import os
+import random
+import string
 from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
-# Update ke v7 untuk mengakomodasi kolom File Berita Acara
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v7.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v8.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
 
-# Konfigurasi Upload File
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg'}
-
 db = SQLAlchemy(app)
 
 def allowed_file(filename):
@@ -29,7 +29,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True)
     nama_lengkap = db.Column(db.String(100))
-    password = db.Column(db.String(100))
+    password = db.Column(db.String(255)) # String diperpanjang untuk menampung Hash
+    no_wa = db.Column(db.String(20)) # Tambahan: No WA khusus User untuk Reset Password
     role = db.Column(db.String(20))
 
 class DataRPM(db.Model):
@@ -47,14 +48,13 @@ class DataRPM(db.Model):
     wa_ketua_tim = db.Column(db.String(20))
     status = db.Column(db.String(50), default="Dalam Pemantauan")
     
-    # Approval & File Pendukung
     status_approval = db.Column(db.String(50), nullable=True)
     usulan_status = db.Column(db.String(50), nullable=True)
     usulan_tenggat = db.Column(db.Date, nullable=True)
     no_ba_kesepakatan = db.Column(db.String(100), nullable=True)
     tgl_ba_kesepakatan = db.Column(db.Date, nullable=True)
     file_bukti = db.Column(db.String(200), nullable=True)
-    file_ba_kesepakatan = db.Column(db.String(200), nullable=True) # TAMBAHAN: File BA
+    file_ba_kesepakatan = db.Column(db.String(200), nullable=True)
 
 # --- FUNGSI GLOBAL & KEAMANAN ---
 @app.context_processor
@@ -88,8 +88,9 @@ def role_required(role):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form['username'], password=request.form['password']).first()
-        if user:
+        user = User.query.filter_by(username=request.form['username']).first()
+        # CEK HASH PASSWORD SAAT LOGIN
+        if user and check_password_hash(user.password, request.form['password']):
             session.permanent = True 
             session['logged_in'] = True
             session['username'] = user.username
@@ -105,16 +106,41 @@ def logout():
     session.clear()
     return redirect('/login')
 
+# PENDEKATAN 2: Lupa Password via WA (Otomatis)
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        username = request.form['username']
+        user = User.query.filter_by(username=username).first()
+        if user:
+            if not user.no_wa:
+                flash("Nomor WA tidak terdaftar untuk akun ini. Hubungi Super Admin.", "danger")
+            else:
+                # Generate Password Acak (8 Karakter)
+                new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+                user.password = generate_password_hash(new_password)
+                db.session.commit()
+                # Simulasi Kirim WA (Nantinya diganti dengan API)
+                print(f"-> MENGIRIM WA KE {user.no_wa}: Password baru SIMA Anda adalah: {new_password}")
+                flash(f"Password baru telah berhasil dikirim ke WhatsApp Anda yang terdaftar ({user.no_wa[:4]}xxx).", "success")
+                return redirect('/login')
+        else:
+            flash("Username (PN) tidak ditemukan dalam sistem.", "danger")
+    return render_template('forgot_password.html')
+
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 @role_required('superadmin')
 def admin_dashboard():
     if request.method == 'POST':
         try:
+            # HASHING PASSWORD SEBELUM DISIMPAN KE DATABASE
+            hashed_pw = generate_password_hash(request.form['password'])
             baru = User(
                 username=request.form['username'],
                 nama_lengkap=request.form['nama_lengkap'],
-                password=request.form['password'],
+                password=hashed_pw,
+                no_wa=request.form['no_wa'],
                 role=request.form['role']
             )
             db.session.add(baru)
@@ -126,6 +152,18 @@ def admin_dashboard():
         return redirect('/admin')
     users = User.query.all()
     return render_template('admin.html', users=users)
+
+# PENDEKATAN 1: Super Admin Reset Manual Password User
+@app.route('/admin/reset_password/<int:id>', methods=['POST'])
+@login_required
+@role_required('superadmin')
+def admin_reset_password(id):
+    user = User.query.get_or_404(id)
+    new_pw = request.form['new_password']
+    user.password = generate_password_hash(new_pw)
+    db.session.commit()
+    flash(f"Password untuk user {user.nama_lengkap} berhasil di-reset!", "success")
+    return redirect('/admin')
 
 @app.route('/')
 @login_required
@@ -161,40 +199,37 @@ def input_data():
 def edit_data(id):
     rpm = DataRPM.query.get_or_404(id)
     if request.method == 'POST':
-        user = User.query.filter_by(username=session['username'], password=request.form['password_otorisasi']).first()
-        if not user:
-            flash("Otorisasi Gagal: Password Anda salah!", "danger")
+        # CEK HASH PASSWORD UNTUK OTORISASI PERUBAHAN AUDITOR
+        user = User.query.filter_by(username=session['username']).first()
+        if not user or not check_password_hash(user.password, request.form['password_otorisasi']):
+            flash("Otorisasi Gagal: Password Akun Anda salah!", "danger")
             return redirect(f'/edit/{id}')
 
-        # 1. Update Status & File Bukti
         rpm.usulan_status = request.form['status']
         if rpm.usulan_status != rpm.status:
             file = request.files.get('file_bukti')
             if not file or not allowed_file(file.filename):
-                flash("WAJIB mengunggah file bukti (PDF/JPG) jika merubah status!", "danger")
+                flash("WAJIB mengunggah file bukti status!", "danger")
                 return redirect(f'/edit/{id}')
             filename = secure_filename(f"RPM_{id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}")
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             rpm.file_bukti = filename
 
-        # 2. Update Tenggat & File BA (Fitur Baru)
         rpm.usulan_tenggat = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
         if rpm.usulan_tenggat != rpm.tenggat_waktu:
             rpm.no_ba_kesepakatan = request.form.get('no_ba')
             rpm.tgl_ba_kesepakatan = datetime.strptime(request.form.get('tgl_ba'), '%Y-%m-%d').date()
-            
             file_ba = request.files.get('file_ba')
             if not file_ba or not allowed_file(file_ba.filename):
-                flash("WAJIB mengunggah File Berita Acara (PDF/JPG) jika merubah tenggat waktu!", "danger")
+                flash("WAJIB mengunggah File BA!", "danger")
                 return redirect(f'/edit/{id}')
-            
             filename_ba = secure_filename(f"BA_{id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file_ba.filename}")
             file_ba.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_ba))
             rpm.file_ba_kesepakatan = filename_ba
             
         rpm.status_approval = 'Menunggu Approval'
         db.session.commit()
-        flash("Usulan dan dokumen berhasil dikirim ke Ketua Tim Audit!", "success")
+        flash("Usulan dikirim ke Ketua Tim Audit!", "success")
         return redirect('/')
     return render_template('edit.html', item=rpm)
 
@@ -209,16 +244,18 @@ def approval_dashboard():
 @login_required
 @role_required('ketuatim')
 def process_approval(id):
-    user = User.query.filter_by(username=session['username'], password=request.form['password_otorisasi']).first()
-    if not user:
-        flash("Otorisasi Gagal: Password Anda salah!", "danger")
-        return redirect('/approval')
+    # CEK HASH PASSWORD UNTUK OTORISASI KETUA TIM
+    user = User.query.filter_by(username=session['username']).first()
+    if request.form['action'] == 'terima':
+        if not user or not check_password_hash(user.password, request.form['password_otorisasi']):
+            flash("Otorisasi Gagal: Password Anda salah!", "danger")
+            return redirect('/approval')
 
     rpm = DataRPM.query.get_or_404(id)
     if request.form['action'] == 'terima':
         rpm.status = rpm.usulan_status
         if rpm.usulan_tenggat: rpm.tenggat_waktu = rpm.usulan_tenggat
-        flash(f"Usulan disetujui! Notifikasi WA telah dikirim.", "success")
+        flash("Usulan disetujui! Notifikasi WA telah dikirim.", "success")
     else:
         flash("Usulan perubahan ditolak.", "warning")
         
@@ -235,7 +272,9 @@ def download_file(name):
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
-        admin = User(username='admin', nama_lengkap='Administrator', password='admin', role='superadmin')
+        # Buat Password Terenkripsi untuk Super Admin perdana
+        admin_hashed = generate_password_hash('admin')
+        admin = User(username='admin', nama_lengkap='Administrator', password=admin_hashed, role='superadmin', no_wa='08123456789')
         db.session.add(admin)
         db.session.commit()
 
