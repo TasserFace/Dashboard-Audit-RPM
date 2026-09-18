@@ -135,7 +135,15 @@
       </div>
     </div>
     {% endfor %}
-
+{% if item.no_ba_kesepakatan %}
+            <h6 class="fw-bold text-nusantara mt-3">Riwayat Kesepakatan Ulang (BA):</h6>
+            <div class="border border-warning p-2 rounded bg-light text-dark">
+                <p class="mb-1"><strong>No. BA:</strong> {{ item.no_ba_kesepakatan }} (Tgl: {{ item.tgl_ba_kesepakatan.strftime('%d-%m-%Y') }})</p>
+                {% if item.file_ba_kesepakatan %}
+                <a href="/uploads/{{ item.file_ba_kesepakatan }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold mt-1">Lihat Dokumen BA</a>
+                {% endif %}
+            </div>
+            {% endif %}
     <!-- Script JavaScript untuk Fitur Pencarian Real-Time -->
     <script>
         document.getElementById("searchInput").addEventListener("keyup", function() {
