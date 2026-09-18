@@ -1,37 +1,67 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard RPM Audit</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="container mt-5">
-    <h2>Dashboard Monitoring Rencana Perbaikan Manajemen</h2>
-    <a href="/input" class="btn btn-primary mb-3">+ Tambah RPM</a>
-    
-    <table class="table table-striped table-bordered">
-        <thead class="table-dark">
-            <tr>
-                <th>ID</th><th>Unit Kerja</th><th>Tenggat Waktu</th><th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in data %}
-            <tr>
-                <td>{{ item.id }}</td>
-                <td>{{ item.unit_kerja }}</td>
-                <td>{{ item.tenggat_waktu }}</td>
-                <td>
-                    <!-- Pewarnaan badge berdasarkan status -->
-                    <span class="badge 
-                        {% if item.status == 'Memadai' %} bg-success 
-                        {% elif item.status == 'Overdue' %} bg-danger 
-                        {% else %} bg-warning text-dark {% endif %}">
-                        {{ item.status }}
-                    </span>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<body class="bg-light">
+    <div class="container-fluid mt-5 px-4">
+        <h2 class="mb-4">Dashboard Monitoring Rencana Perbaikan Manajemen</h2>
+        <a href="/input" class="btn btn-primary mb-3">+ Tambah RPM</a>
+        
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Jenis Audit</th>
+                            <th>Unit Kerja</th>
+                            <th>Tenggat Waktu</th>
+                            <th>Sisa Hari</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in data %}
+                        <!-- Memberi warna merah muda (table-danger) jika sisa hari <= 14 dan belum memadai -->
+                        <tr class="{% if item.sisa_hari <= 14 and item.status != 'Memadai' %}table-danger{% endif %}">
+                            <td class="fw-bold">{{ item.jenis_audit }}</td>
+                            <td>{{ item.unit_kerja }}</td>
+                            <td>{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
+                            <td>
+                                {% if item.status == 'Memadai' %}
+                                    <span class="text-success fw-bold">Selesai</span>
+                                {% elif item.sisa_hari < 0 %}
+                                    <span class="text-danger fw-bold">Terlewat {{ item.sisa_hari|abs }} Hari</span>
+                                {% else %}
+                                    <span class="fw-bold">{{ item.sisa_hari }} Hari</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if item.status == 'Memadai' %} bg-success 
+                                    {% elif item.status == 'Belum Memadai' %} bg-danger
+                                    {% elif item.sisa_hari < 0 %} bg-dark
+                                    {% else %} bg-warning text-dark {% endif %}">
+                                    {{ item.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/edit/{{ item.id }}" class="btn btn-sm btn-outline-primary">Ubah</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-3">Belum ada data RPM.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
