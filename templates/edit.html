@@ -8,7 +8,6 @@
     <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; }</style>
 </head>
 <body class="bg-light">
-    <!-- Navbar sama dengan index.html, hapus demi efisiensi teks di jawaban ini, atau Anda bisa mencopynya dari file index.html -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
@@ -24,9 +23,11 @@
           {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
 
-        <div class="card shadow-sm border-0 border-top border-4 border-primary">
+        <div class="card shadow-sm border-0 border-top border-4 border-primary mb-5">
             <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold text-nusantara">Menu Tindak Lanjut RPM</h5></div>
             <div class="card-body p-4">
+                
+                <!-- Pastikan form menggunakan enctype="multipart/form-data" -->
                 <form action="/edit/{{ item.id }}" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label text-nusantara fw-bold">Unit Kerja</label>
@@ -42,11 +43,10 @@
                         </select>
                     </div>
 
-                    <!-- AREA UPLOAD (Wajib Jika Status Berubah) -->
+                    <!-- AREA UPLOAD STATUS -->
                     <div class="mb-4 p-3 bg-light border border-info rounded" id="upload_section" style="display: none;">
-                        <label class="form-label fw-bold text-nusantara">Upload Dokumen Bukti (PDF/JPG) <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold text-nusantara">Upload Dokumen Bukti Status (PDF/JPG) <span class="text-danger">*</span></label>
                         <input type="file" class="form-control" id="file_bukti" name="file_bukti" accept=".pdf, .jpg, .jpeg">
-                        <small class="text-muted">Diwajibkan karena terjadi perubahan status dari '{{ item.status }}'.</small>
                     </div>
 
                     <hr>
@@ -55,19 +55,24 @@
                         <input type="date" class="form-control w-50" id="tenggat_waktu" name="tenggat_waktu" value="{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}" required>
                     </div>
 
-                    <!-- Form BA (Tersembunyi) -->
+                    <!-- AREA BERITA ACARA (Tersembunyi, muncul jika tanggal berubah) -->
                     <div id="ba_section" class="p-3 mb-4 bg-warning bg-opacity-25 border border-warning rounded" style="display: none;">
-                        <h6 class="text-danger fw-bold">Perubahan Tenggat Terdeteksi</h6>
-                        <input type="text" class="form-control mb-2" id="no_ba" name="no_ba" placeholder="Nomor BA">
-                        <input type="date" class="form-control" id="tgl_ba" name="tgl_ba">
+                        <h6 class="text-danger fw-bold mb-3">⚠️ Perubahan Tenggat Terdeteksi</h6>
+                        
+                        <label class="form-label text-dark fw-bold">Nomor Berita Acara Kesepakatan (BA)</label>
+                        <input type="text" class="form-control mb-3 border-dark" id="no_ba" name="no_ba" placeholder="Contoh: BA-01/2026">
+                        
+                        <label class="form-label text-dark fw-bold">Tanggal Berita Acara</label>
+                        <input type="date" class="form-control mb-3 border-dark" id="tgl_ba" name="tgl_ba">
+                        
+                        <label class="form-label text-dark fw-bold">Upload File BA Kesepakatan (PDF/JPG) <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control border-dark" id="file_ba" name="file_ba" accept=".pdf, .jpg, .jpeg">
                     </div>
 
                     <hr>
-                    <!-- Otorisasi Auditor -->
                     <div class="mb-4 p-3 bg-secondary bg-opacity-10 rounded">
                         <label class="form-label fw-bold text-dark">Otorisasi Perubahan</label>
                         <input type="password" class="form-control border-dark" name="password_otorisasi" placeholder="Masukkan Password Akun Anda" required>
-                        <small class="text-muted">Status perubahan akan memicu notifikasi WA ke Tim Audit & Auditee.</small>
                     </div>
 
                     <div class="d-flex justify-content-between">
@@ -80,21 +85,43 @@
     </div>
 
     <script>
+        // Logika kemunculan form upload file bukti status
         const originalStatus = "{{ item.status }}";
         const statusSelect = document.getElementById('status_select');
         const uploadSection = document.getElementById('upload_section');
-        const fileInput = document.getElementById('file_bukti');
+        const fileBuktiInput = document.getElementById('file_bukti');
 
         statusSelect.addEventListener('change', function() {
             if (this.value !== originalStatus) {
                 uploadSection.style.display = 'block';
-                fileInput.required = true;
+                fileBuktiInput.required = true;
             } else {
                 uploadSection.style.display = 'none';
-                fileInput.required = false;
+                fileBuktiInput.required = false;
             }
         });
-        // Script untuk tanggal (sama dengan file Anda sebelumnya)
+
+        // Logika kemunculan form Berita Acara & file BA
+        const originalDate = "{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}";
+        const dateInput = document.getElementById('tenggat_waktu');
+        const baSection = document.getElementById('ba_section');
+        const noBaInput = document.getElementById('no_ba');
+        const tglBaInput = document.getElementById('tgl_ba');
+        const fileBaInput = document.getElementById('file_ba'); // Tambahan File BA
+
+        dateInput.addEventListener('change', function() {
+            if (this.value !== originalDate) {
+                baSection.style.display = 'block';
+                noBaInput.required = true;
+                tglBaInput.required = true;
+                fileBaInput.required = true; // File diwajibkan
+            } else {
+                baSection.style.display = 'none';
+                noBaInput.required = false;
+                tglBaInput.required = false;
+                fileBaInput.required = false;
+            }
+        });
     </script>
 </body>
 </html>
