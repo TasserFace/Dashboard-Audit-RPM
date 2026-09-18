@@ -108,7 +108,7 @@
         </div>
     </div>
 
-    <!-- Modal Pop-up (Menampilkan No LHA) -->
+    <!-- Modal Pop-up -->
     {% for item in data %}
     <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
@@ -126,16 +126,13 @@
             <p class="border border-info p-2 rounded bg-light text-dark mb-3">{{ item.deskripsi }}</p>
             
             <h6 class="fw-bold text-nusantara mt-3">Kontak Auditee:</h6>
-            <table class="table table-sm text-dark">
+            <table class="table table-sm text-dark mb-3">
                 <tr><td>Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
                 <tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
             </table>
-          </div>
-        </div>
-      </div>
-    </div>
-    {% endfor %}
-{% if item.no_ba_kesepakatan %}
+
+            <!-- ==== INI ADALAH BAGIAN LANGKAH 4 (Riwayat BA) ==== -->
+            {% if item.no_ba_kesepakatan %}
             <h6 class="fw-bold text-nusantara mt-3">Riwayat Kesepakatan Ulang (BA):</h6>
             <div class="border border-warning p-2 rounded bg-light text-dark">
                 <p class="mb-1"><strong>No. BA:</strong> {{ item.no_ba_kesepakatan }} (Tgl: {{ item.tgl_ba_kesepakatan.strftime('%d-%m-%Y') }})</p>
@@ -144,6 +141,14 @@
                 {% endif %}
             </div>
             {% endif %}
+            <!-- =================================================== -->
+
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
     <!-- Script JavaScript untuk Fitur Pencarian Real-Time -->
     <script>
         document.getElementById("searchInput").addEventListener("keyup", function() {
