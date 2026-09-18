@@ -8,11 +8,9 @@ from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
-# Update ke v6 untuk mengakomodasi kolom No LHA
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v6.db'
+# Update ke v7 untuk mengakomodasi kolom File Berita Acara
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v7.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# FITUR: Auto-Logout setelah 15 Menit Inaktif
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
 
 # Konfigurasi Upload File
@@ -36,7 +34,7 @@ class User(db.Model):
 
 class DataRPM(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    no_lha = db.Column(db.String(100)) # TAMBAHAN: Nomor LHA
+    no_lha = db.Column(db.String(100)) 
     jenis_audit = db.Column(db.String(50))
     unit_kerja = db.Column(db.String(100))
     deskripsi = db.Column(db.Text)
@@ -48,14 +46,17 @@ class DataRPM(db.Model):
     nama_ketua_tim = db.Column(db.String(100))
     wa_ketua_tim = db.Column(db.String(20))
     status = db.Column(db.String(50), default="Dalam Pemantauan")
+    
+    # Approval & File Pendukung
     status_approval = db.Column(db.String(50), nullable=True)
     usulan_status = db.Column(db.String(50), nullable=True)
     usulan_tenggat = db.Column(db.Date, nullable=True)
     no_ba_kesepakatan = db.Column(db.String(100), nullable=True)
     tgl_ba_kesepakatan = db.Column(db.Date, nullable=True)
     file_bukti = db.Column(db.String(200), nullable=True)
+    file_ba_kesepakatan = db.Column(db.String(200), nullable=True) # TAMBAHAN: File BA
 
-# --- FUNGSI GLOBAL NOTIFIKASI KETUA TIM ---
+# --- FUNGSI GLOBAL & KEAMANAN ---
 @app.context_processor
 def inject_pending_count():
     if session.get('role') == 'ketuatim':
@@ -63,7 +64,6 @@ def inject_pending_count():
         return dict(pending_count=count)
     return dict(pending_count=0)
 
-# --- FUNGSI KEAMANAN ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -90,7 +90,7 @@ def login():
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form['username'], password=request.form['password']).first()
         if user:
-            session.permanent = True # Mengaktifkan timer 15 menit
+            session.permanent = True 
             session['logged_in'] = True
             session['username'] = user.username
             session['nama_lengkap'] = user.nama_lengkap
@@ -122,7 +122,7 @@ def admin_dashboard():
             flash(f"User {baru.nama_lengkap} berhasil ditambahkan!", "success")
         except IntegrityError:
             db.session.rollback()
-            flash("GAGAL: Username (PN) tersebut sudah terdaftar di sistem! Silakan gunakan PN yang berbeda.", "danger")
+            flash("GAGAL: Username (PN) tersebut sudah terdaftar di sistem!", "danger")
         return redirect('/admin')
     users = User.query.all()
     return render_template('admin.html', users=users)
@@ -144,8 +144,7 @@ def input_data():
     if request.method == 'POST':
         tgl_obj = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
         baru = DataRPM(
-            no_lha=request.form['no_lha'], # Menerima input No LHA
-            jenis_audit=request.form['jenis_audit'], unit_kerja=request.form['unit_kerja'], deskripsi=request.form['deskripsi'],
+            no_lha=request.form['no_lha'], jenis_audit=request.form['jenis_audit'], unit_kerja=request.form['unit_kerja'], deskripsi=request.form['deskripsi'],
             tenggat_waktu=tgl_obj, nama_pic=request.form['nama_pic'], wa_auditee=request.form['wa_auditee'],
             nama_auditor=request.form['nama_auditor'], wa_auditor=request.form['wa_auditor'],
             nama_ketua_tim=request.form['nama_ketua_tim'], wa_ketua_tim=request.form['wa_ketua_tim']
@@ -162,12 +161,12 @@ def input_data():
 def edit_data(id):
     rpm = DataRPM.query.get_or_404(id)
     if request.method == 'POST':
-        password_input = request.form['password_otorisasi']
-        user = User.query.filter_by(username=session['username'], password=password_input).first()
+        user = User.query.filter_by(username=session['username'], password=request.form['password_otorisasi']).first()
         if not user:
             flash("Otorisasi Gagal: Password Anda salah!", "danger")
             return redirect(f'/edit/{id}')
 
+        # 1. Update Status & File Bukti
         rpm.usulan_status = request.form['status']
         if rpm.usulan_status != rpm.status:
             file = request.files.get('file_bukti')
@@ -178,14 +177,24 @@ def edit_data(id):
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             rpm.file_bukti = filename
 
+        # 2. Update Tenggat & File BA (Fitur Baru)
         rpm.usulan_tenggat = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
         if rpm.usulan_tenggat != rpm.tenggat_waktu:
             rpm.no_ba_kesepakatan = request.form.get('no_ba')
             rpm.tgl_ba_kesepakatan = datetime.strptime(request.form.get('tgl_ba'), '%Y-%m-%d').date()
             
+            file_ba = request.files.get('file_ba')
+            if not file_ba or not allowed_file(file_ba.filename):
+                flash("WAJIB mengunggah File Berita Acara (PDF/JPG) jika merubah tenggat waktu!", "danger")
+                return redirect(f'/edit/{id}')
+            
+            filename_ba = secure_filename(f"BA_{id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file_ba.filename}")
+            file_ba.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_ba))
+            rpm.file_ba_kesepakatan = filename_ba
+            
         rpm.status_approval = 'Menunggu Approval'
         db.session.commit()
-        flash("Usulan dan bukti berhasil dikirim ke Ketua Tim Audit!", "success")
+        flash("Usulan dan dokumen berhasil dikirim ke Ketua Tim Audit!", "success")
         return redirect('/')
     return render_template('edit.html', item=rpm)
 
@@ -200,16 +209,13 @@ def approval_dashboard():
 @login_required
 @role_required('ketuatim')
 def process_approval(id):
-    password_input = request.form['password_otorisasi']
-    user = User.query.filter_by(username=session['username'], password=password_input).first()
+    user = User.query.filter_by(username=session['username'], password=request.form['password_otorisasi']).first()
     if not user:
         flash("Otorisasi Gagal: Password Anda salah!", "danger")
         return redirect('/approval')
 
     rpm = DataRPM.query.get_or_404(id)
-    action = request.form['action']
-    
-    if action == 'terima':
+    if request.form['action'] == 'terima':
         rpm.status = rpm.usulan_status
         if rpm.usulan_tenggat: rpm.tenggat_waktu = rpm.usulan_tenggat
         flash(f"Usulan disetujui! Notifikasi WA telah dikirim.", "success")
