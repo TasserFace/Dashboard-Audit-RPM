@@ -3,25 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <title>Dashboard Monitoring RPM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .clickable-row { cursor: pointer; transition: background-color 0.2s; }
-        .clickable-row:hover { background-color: #f1f3f5 !important; }
+        body { font-family: 'Inter', sans-serif; }
+        .bg-nusantara { background-color: #0857C3 !important; }
+        .bg-cakrawala { background-color: #307FE2 !important; }
+        .bg-mentari { background-color: #71C5E8 !important; color: #000; }
+        .btn-cakrawala { background-color: #307FE2; color: white; border: none; }
+        .btn-cakrawala:hover { background-color: #0857C3; color: white; }
     </style>
 </head>
 <body class="bg-light">
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <!-- Navbar Dinamis -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold" href="/">Dashboard RPM</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item"><a class="nav-link active" href="/">Monitoring</a></li>
+                    {% if session['role'] == 'auditor' %}
                     <li class="nav-item"><a class="nav-link" href="/input">Tambah RPM</a></li>
+                    {% elif session['role'] == 'ketuatim' %}
+                    <li class="nav-item"><a class="nav-link text-warning fw-bold" href="/approval">Menu Approval</a></li>
+                    {% endif %}
                 </ul>
                 <div class="d-flex text-white align-items-center">
-                    <span class="me-3">Halo, {{ session['username'] }}</span>
-                    <a href="/logout" class="btn btn-sm btn-danger">Logout</a>
+                    <span class="me-3">Halo, {{ session['username'] }} ({{ session['role'] }})</span>
+                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
                 </div>
             </div>
         </div>
@@ -29,61 +38,47 @@
 
     <div class="container-fluid px-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }} alert-dismissible fade show">
-                  {{ message }}
-                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
+          {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
         
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold text-primary">Daftar Rencana Perbaikan Manajemen</h5>
+            <div class="card-header bg-white py-3 border-bottom border-4 border-primary">
+                <h5 class="mb-0 fw-bold" style="color: #0857C3;">Daftar Rencana Perbaikan Manajemen</h5>
             </div>
             <div class="card-body p-0">
-                <!-- TABEL UTAMA -->
-                <table class="table align-middle mb-0">
-                    <thead class="table-dark">
+                <table class="table align-middle mb-0 table-hover">
+                    <thead class="bg-cakrawala text-white">
                         <tr>
-                            <th>Jenis Audit</th>
-                            <th>Unit Kerja</th>
-                            <th>Tenggat Waktu</th>
-                            <th>Sisa Hari</th>
-                            <th>Status</th>
-                            <th>PIC RPM (Nama Auditor)</th>
-                            <th>Aksi</th>
+                            <th>Jenis Audit</th><th>Unit Kerja</th><th>Tenggat Waktu</th>
+                            <th>Sisa Hari</th><th>Status</th><th>Auditor</th><th>Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in data %}
-                        <tr class="clickable-row {% if item.sisa_hari <= 14 and item.status != 'Memadai' %}table-danger{% endif %}">
+                        <tr class="{% if item.sisa_hari <= 14 and item.status != 'Memadai' %}table-danger{% endif %}">
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.jenis_audit }}</strong></td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.unit_kerja }}</td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">
-                                {% if item.status == 'Memadai' %}
-                                    <span class="text-success fw-bold">Selesai</span>
-                                {% elif item.sisa_hari < 0 %}
-                                    <span class="text-danger fw-bold">Lewat {{ item.sisa_hari|abs }} Hari</span>
-                                {% else %}
-                                    <span class="fw-bold">{{ item.sisa_hari }} Hari</span>
-                                {% endif %}
+                                {% if item.status == 'Memadai' %}<span class="text-success fw-bold">Selesai</span>
+                                {% elif item.sisa_hari < 0 %}<span class="text-danger fw-bold">Lewat {{ item.sisa_hari|abs }} Hari</span>
+                                {% else %}<span class="fw-bold">{{ item.sisa_hari }} Hari</span>{% endif %}
                             </td>
-                            <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">
-                                <span class="badge {% if item.status == 'Memadai' %} bg-success {% elif item.status == 'Belum Memadai' %} bg-danger {% elif item.sisa_hari < 0 %} bg-dark {% else %} bg-warning text-dark {% endif %}">
-                                    {{ item.status }}
-                                </span>
+                            <td>
+                                <span class="badge {% if item.status == 'Memadai' %} bg-success {% elif item.status == 'Belum Memadai' %} bg-danger {% else %} bg-warning text-dark {% endif %}">{{ item.status }}</span>
+                                {% if item.status_approval == 'Menunggu Approval' %}
+                                <br><span class="badge bg-mentari mt-1">⏳ Menunggu Approval</span>
+                                {% endif %}
                             </td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.nama_auditor }}</td>
                             <td>
-                                <a href="/edit/{{ item.id }}" class="btn btn-sm btn-primary">Tindak Lanjut</a>
+                                {% if session['role'] == 'auditor' %}
+                                <a href="/edit/{{ item.id }}" class="btn btn-sm btn-cakrawala">Tindak Lanjut</a>
+                                {% else %}
+                                <button class="btn btn-sm btn-secondary" disabled>Hanya Auditor</button>
+                                {% endif %}
                             </td>
                         </tr>
-                        {% else %}
-                        <tr><td colspan="7" class="text-center py-4 text-muted">Belum ada data RPM.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -91,36 +86,28 @@
         </div>
     </div>
     
-    <!-- AREA MODAL POP-UP (Dipindahkan ke luar tabel untuk menjaga struktur HTML) -->
+    <!-- Modal Pop-up diletakkan di luar tabel -->
     {% for item in data %}
     <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
       <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header bg-primary text-white">
-            <h5 class="modal-title">Rincian RPM: {{ item.unit_kerja }}</h5>
+        <div class="modal-content border-0">
+          <div class="modal-header bg-cakrawala text-white">
+            <h5 class="modal-title fw-bold">Rincian RPM: {{ item.unit_kerja }}</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <h6><strong>Deskripsi Tindak Lanjut:</strong></h6>
-            <p class="text-muted border p-2 rounded bg-light">{{ item.deskripsi }}</p>
-            
-            <h6><strong>Informasi Kontak Auditee:</strong></h6>
-            <table class="table table-sm table-borderless">
-                <tr><td width="40%">Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
-                <tr><td>No. WhatsApp PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
+            <h6 class="fw-bold text-secondary">Deskripsi Tindak Lanjut:</h6>
+            <p class="border p-2 rounded bg-light">{{ item.deskripsi }}</p>
+            <h6 class="fw-bold text-secondary mt-3">Kontak Auditee:</h6>
+            <table class="table table-sm">
+                <tr><td>Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
+                <tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
             </table>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-            <a href="/edit/{{ item.id }}" class="btn btn-primary">Tindak Lanjut</a>
           </div>
         </div>
       </div>
     </div>
     {% endfor %}
-    <!-- Akhir Area Modal -->
-
-    <!-- Script Bootstrap untuk Modal Pop-up -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
