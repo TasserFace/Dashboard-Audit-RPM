@@ -3,12 +3,15 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from functools import wraps
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v5.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# FITUR BARU: Auto-Logout setelah 15 Menit Inaktif
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
 
 # Konfigurasi Upload File
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'uploads')
@@ -21,11 +24,11 @@ db = SQLAlchemy(app)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- SKEMA DATABASE ---
+# --- SKEMA DATABASE (Sama seperti V5) ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True) # PN
-    nama_lengkap = db.Column(db.String(100)) # Nama asli (Misal: Adi)
+    username = db.Column(db.String(50), unique=True)
+    nama_lengkap = db.Column(db.String(100))
     password = db.Column(db.String(100))
     role = db.Column(db.String(20))
 
@@ -42,8 +45,6 @@ class DataRPM(db.Model):
     nama_ketua_tim = db.Column(db.String(100))
     wa_ketua_tim = db.Column(db.String(20))
     status = db.Column(db.String(50), default="Dalam Pemantauan")
-    
-    # Field Approval & File
     status_approval = db.Column(db.String(50), nullable=True)
     usulan_status = db.Column(db.String(50), nullable=True)
     usulan_tenggat = db.Column(db.Date, nullable=True)
@@ -51,11 +52,21 @@ class DataRPM(db.Model):
     tgl_ba_kesepakatan = db.Column(db.Date, nullable=True)
     file_bukti = db.Column(db.String(200), nullable=True)
 
+# --- FUNGSI GLOBAL NOTIFIKASI KETUA TIM ---
+@app.context_processor
+def inject_pending_count():
+    if session.get('role') == 'ketuatim':
+        count = DataRPM.query.filter_by(status_approval='Menunggu Approval').count()
+        return dict(pending_count=count)
+    return dict(pending_count=0)
+
 # --- FUNGSI KEAMANAN ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'logged_in' not in session: return redirect('/login')
+        if 'logged_in' not in session: 
+            flash("Sesi Anda telah berakhir. Silakan login kembali.", "warning")
+            return redirect('/login')
         return f(*args, **kwargs)
     return decorated_function
 
@@ -76,6 +87,7 @@ def login():
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form['username'], password=request.form['password']).first()
         if user:
+            session.permanent = True # Mengaktifkan timer 15 menit
             session['logged_in'] = True
             session['username'] = user.username
             session['nama_lengkap'] = user.nama_lengkap
@@ -187,12 +199,11 @@ def process_approval(id):
         return redirect('/approval')
 
     rpm = DataRPM.query.get_or_404(id)
-    action = request.form['action'] # 'terima' atau 'tolak'
+    action = request.form['action']
     
     if action == 'terima':
         rpm.status = rpm.usulan_status
         if rpm.usulan_tenggat: rpm.tenggat_waktu = rpm.usulan_tenggat
-        print(f"-> WA NOTIFIKASI DIKIRIM KE: {rpm.wa_auditor}, {rpm.wa_ketua_tim}, {rpm.wa_auditee}")
         flash(f"Usulan disetujui! Notifikasi WA telah dikirim.", "success")
     else:
         flash("Usulan perubahan ditolak.", "warning")
