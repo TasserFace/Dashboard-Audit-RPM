@@ -12,7 +12,6 @@
         .text-nusantara { color: #0857C3 !important; }
         .text-mentari { color: #71C5E8 !important; }
         .table-header { color: #0857C3 !important; font-weight: bold; border-bottom: 2px solid #0857C3; }
-        /* Fitur Baris Klik */
         .clickable-row { cursor: pointer; transition: background-color 0.2s; }
         .clickable-row:hover { background-color: #f1f3f5 !important; }
         .badge-notif { font-size: 0.85em; transform: translateY(-2px); margin-left: 5px; }
@@ -33,7 +32,7 @@
                         <a class="nav-link text-white fw-bold d-flex align-items-center" href="/approval">
                             Menu Approval 
                             {% if pending_count > 0 %}
-                            <span class="badge bg-danger rounded-pill badge-notif">🔔 {{ pending_count }}</span>
+                            <span class="badge bg-warning text-dark rounded-pill badge-notif">🔔 {{ pending_count }}</span>
                             {% else %}
                             <span class="badge bg-secondary rounded-pill badge-notif">🔔 0</span>
                             {% endif %}
@@ -42,8 +41,7 @@
                     {% endif %}
                 </ul>
                 
-                <!-- Center Info Role (Diubah ke Warna Nusantara Blue) -->
-                <div class="mx-auto text-white fw-bold text-uppercase px-4 py-2 bg-nusantara border border-white rounded shadow-sm">
+                <div class="mx-auto text-white fw-bold text-uppercase px-4 py-2 bg-cakrawala border border-white rounded shadow-sm">
                     LOGIN AS: {{ 'KETUA TIM AUDIT' if session['role'] == 'ketuatim' else 'AUDITOR' }}
                 </div>
 
@@ -60,10 +58,19 @@
           {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
         
-        <h4 class="fw-bold mb-4 text-nusantara">Daftar Rencana Perbaikan Manajemen</h4>
+        <!-- Area Pencarian & Judul -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold mb-0 text-nusantara">Daftar Rencana Perbaikan Manajemen</h4>
+            
+            <!-- Kolom Search/Filter -->
+            <div class="w-25">
+                <input type="text" id="searchInput" class="form-control border-primary shadow-sm" placeholder="🔍 Cari Data RPM...">
+            </div>
+        </div>
+
         <div class="card shadow-sm border-0">
             <div class="card-body p-0">
-                <table class="table align-middle mb-0 table-hover text-nusantara">
+                <table class="table align-middle mb-0 text-nusantara" id="rpmTable">
                     <thead>
                         <tr>
                             <th class="table-header">Jenis Audit</th><th class="table-header">Unit Kerja</th><th class="table-header">Tenggat Waktu</th>
@@ -72,7 +79,6 @@
                     </thead>
                     <tbody>
                         {% for item in data %}
-                        <!-- Warna merah jika sisa_hari < 14 -->
                         <tr class="clickable-row {% if item.sisa_hari < 14 and item.status != 'Memadai' %}table-danger{% endif %}">
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.jenis_audit }}</strong></td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.unit_kerja }}</td>
@@ -89,9 +95,9 @@
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.nama_auditor }}</td>
                             <td>
                                 {% if session['role'] == 'auditor' %}
-                                <a href="/edit/{{ item.id }}" class="btn btn-sm btn-secondary fw-bold text-white">Tindak Lanjut</a>
+                                <a href="/edit/{{ item.id }}" class="btn btn-sm bg-secondary fw-bold text-white">Tindak Lanjut</a>
                                 {% else %}
-                                <button class="btn btn-sm btn-secondary opacity-50" disabled>Hanya Auditor</button>
+                                <button class="btn btn-sm bg-secondary text-white opacity-50" disabled>Hanya Auditor</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -102,7 +108,7 @@
         </div>
     </div>
 
-    <!-- Modal Pop-up (Diletakkan di luar tabel agar struktur rapi) -->
+    <!-- Modal Pop-up (Menampilkan No LHA) -->
     {% for item in data %}
     <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
@@ -112,8 +118,13 @@
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
+            
+            <h6 class="fw-bold text-nusantara">Informasi Laporan:</h6>
+            <p class="text-dark mb-3"><strong>No. LHA:</strong> {{ item.no_lha }}</p>
+
             <h6 class="fw-bold text-nusantara">Deskripsi Tindak Lanjut:</h6>
-            <p class="border border-info p-2 rounded bg-light text-dark">{{ item.deskripsi }}</p>
+            <p class="border border-info p-2 rounded bg-light text-dark mb-3">{{ item.deskripsi }}</p>
+            
             <h6 class="fw-bold text-nusantara mt-3">Kontak Auditee:</h6>
             <table class="table table-sm text-dark">
                 <tr><td>Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
@@ -124,6 +135,20 @@
       </div>
     </div>
     {% endfor %}
+
+    <!-- Script JavaScript untuk Fitur Pencarian Real-Time -->
+    <script>
+        document.getElementById("searchInput").addEventListener("keyup", function() {
+            let filter = this.value.toLowerCase();
+            let rows = document.querySelectorAll("#rpmTable tbody tr");
+            
+            rows.forEach(row => {
+                let textData = row.innerText.toLowerCase();
+                // Jika teks pencarian cocok dengan isi baris, tampilkan; jika tidak, sembunyikan
+                row.style.display = textData.includes(filter) ? "" : "none";
+            });
+        });
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
