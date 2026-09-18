@@ -32,7 +32,7 @@
         <div class="row">
             <!-- FORM TAMBAH USER -->
             <div class="col-md-4">
-                <div class="card shadow-sm border-0 border-start border-4 border-primary">
+                <div class="card shadow-sm border-0 border-start border-4 border-primary mb-4">
                     <div class="card-header bg-cakrawala text-white fw-bold">Tambah User Baru</div>
                     <div class="card-body">
                         <form action="/admin" method="POST">
@@ -60,7 +60,7 @@
                                     <option value="ketuatim">Ketua Tim Audit</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-nusantara w-100 fw-bold">Simpan User</button>
+                            <button type="submit" class="btn btn-nusantara w-100 fw-bold">Simpan User (Hash Tersandi)</button>
                         </form>
                     </div>
                 </div>
@@ -71,57 +71,104 @@
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-dark text-white fw-bold">Daftar User Sistem & Keamanan</div>
                     <div class="card-body p-0">
-                        <table class="table mb-0 align-middle">
-                            <thead>
-                                <tr>
-                                    <th class="text-nusantara">Nama</th>
-                                    <th class="text-nusantara">Username(PN)</th>
-                                    <th class="text-nusantara">No. WA</th>
-                                    <th class="text-nusantara">Role</th>
-                                    <th class="text-nusantara text-center">Aksi (Keamanan)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for u in users %}
-                                <tr>
-                                    <td class="fw-bold text-nusantara">{{ u.nama_lengkap }}</td>
-                                    <td>{{ u.username }}</td>
-                                    <td>{{ u.no_wa }}</td>
-                                    <td><span class="badge bg-secondary">{{ u.role }}</span></td>
-                                    <td class="text-center">
-                                        <!-- Tombol Pemicu Modal Reset Password -->
-                                        <button type="button" class="btn btn-sm btn-outline-danger fw-bold" data-bs-toggle="modal" data-bs-target="#modalReset{{ u.id }}">
-                                            Reset Password
-                                        </button>
-                                    </td>
-                                </tr>
+                        <div class="table-responsive">
+                            <table class="table mb-0 align-middle table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="text-nusantara">Nama</th>
+                                        <th class="text-nusantara">Username (PN)</th>
+                                        <th class="text-nusantara">No. WA</th>
+                                        <th class="text-nusantara text-center">Role</th>
+                                        <th class="text-nusantara text-center">Aksi (Manajemen)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for u in users %}
+                                    <tr>
+                                        <td class="fw-bold text-nusantara">{{ u.nama_lengkap }}</td>
+                                        <td>{{ u.username }}</td>
+                                        <td>{{ u.no_wa }}</td>
+                                        <td class="text-center">
+                                            <span class="badge {% if u.role == 'superadmin' %}bg-primary{% elif u.role == 'ketuatim' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-uppercase">
+                                                {{ u.role }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            
+                                            <!-- Tombol Ubah Role -->
+                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold mb-1" data-bs-toggle="modal" data-bs-target="#modalRole{{ u.id }}">
+                                                ⚙️ Ubah Role
+                                            </button>
 
-                                <!-- Modal Reset Password Admin -->
-                                <div class="modal fade" id="modalReset{{ u.id }}" tabindex="-1">
-                                    <div class="modal-dialog modal-dialog-centered">
-                                        <div class="modal-content">
-                                            <div class="modal-header bg-danger text-white">
-                                                <h5 class="modal-title fw-bold">Manual Reset Password</h5>
-                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                            </div>
-                                            <form action="/admin/reset_password/{{ u.id }}" method="POST">
-                                                <div class="modal-body text-start">
-                                                    <p class="text-dark">Ubah password untuk user: <strong>{{ u.nama_lengkap }} ({{ u.username }})</strong></p>
-                                                    <label class="fw-bold text-danger">Ketik Password Baru:</label>
-                                                    <input type="text" class="form-control border-danger mt-1" name="new_password" placeholder="Contoh: 123456" required>
-                                                    <small class="text-muted">Password akan langsung di-enkripsi (hashed) setelah disimpan.</small>
-                                                </div>
-                                                <div class="modal-footer border-0">
-                                                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
-                                                    <button type="submit" class="btn btn-danger fw-bold">Reset Sekarang</button>
-                                                </div>
+                                            <!-- Tombol Reset Password -->
+                                            <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold mb-1" data-bs-toggle="modal" data-bs-target="#modalReset{{ u.id }}">
+                                                🔑 Reset Pass
+                                            </button>
+                                            
+                                            <!-- Tombol Hapus -->
+                                            <form action="/admin/delete_user/{{ u.id }}" method="POST" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger fw-bold mb-1" onclick="return confirm('Apakah Anda yakin ingin menghapus user {{ u.nama_lengkap }} secara PERMANEN?');">
+                                                    🗑️ Hapus
+                                                </button>
                                             </form>
+                                        </td>
+                                    </tr>
+
+                                    <!-- MODAL UBAH ROLE -->
+                                    <div class="modal fade" id="modalRole{{ u.id }}" tabindex="-1">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-primary text-white">
+                                                    <h5 class="modal-title fw-bold">Ubah Kewenangan User</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form action="/admin/edit_user/{{ u.id }}" method="POST">
+                                                    <div class="modal-body text-start">
+                                                        <p class="text-dark mb-3">Sesuaikan hak akses untuk: <strong>{{ u.nama_lengkap }} ({{ u.username }})</strong></p>
+                                                        
+                                                        <label class="fw-bold text-primary">Pilih Role Baru:</label>
+                                                        <select class="form-select border-primary mt-1 fw-bold" name="role" required>
+                                                            <option value="superadmin" {% if u.role == 'superadmin' %}selected{% endif %}>SUPER ADMIN</option>
+                                                            <option value="ketuatim" {% if u.role == 'ketuatim' %}selected{% endif %}>KETUA TIM AUDIT</option>
+                                                            <option value="auditor" {% if u.role == 'auditor' %}selected{% endif %}>AUDITOR</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="modal-footer border-0">
+                                                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+                                                        <button type="submit" class="btn btn-primary fw-bold bg-nusantara">Simpan Perubahan</button>
+                                                    </div>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+
+                                    <!-- MODAL RESET PASSWORD -->
+                                    <div class="modal fade" id="modalReset{{ u.id }}" tabindex="-1">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-warning">
+                                                    <h5 class="modal-title fw-bold text-dark">Manual Reset Password</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form action="/admin/reset_password/{{ u.id }}" method="POST">
+                                                    <div class="modal-body text-start">
+                                                        <p class="text-dark">Ubah password untuk user: <strong>{{ u.nama_lengkap }} ({{ u.username }})</strong></p>
+                                                        <label class="fw-bold text-dark">Ketik Password Baru:</label>
+                                                        <input type="text" class="form-control border-warning mt-1" name="new_password" placeholder="Contoh: 123456" required>
+                                                        <small class="text-muted">Password akan langsung di-enkripsi (hashed) setelah disimpan.</small>
+                                                    </div>
+                                                    <div class="modal-footer border-0">
+                                                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+                                                        <button type="submit" class="btn btn-warning fw-bold text-dark">Reset Sekarang</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
