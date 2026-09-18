@@ -2,15 +2,17 @@ from flask import Flask, render_template, request, redirect, flash, session, url
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from functools import wraps
+from sqlalchemy.exc import IntegrityError
 import os
 from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v5.db'
+# Update ke v6 untuk mengakomodasi kolom No LHA
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v6.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# FITUR BARU: Auto-Logout setelah 15 Menit Inaktif
+# FITUR: Auto-Logout setelah 15 Menit Inaktif
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
 
 # Konfigurasi Upload File
@@ -24,7 +26,7 @@ db = SQLAlchemy(app)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- SKEMA DATABASE (Sama seperti V5) ---
+# --- SKEMA DATABASE ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True)
@@ -34,6 +36,7 @@ class User(db.Model):
 
 class DataRPM(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    no_lha = db.Column(db.String(100)) # TAMBAHAN: Nomor LHA
     jenis_audit = db.Column(db.String(50))
     unit_kerja = db.Column(db.String(100))
     deskripsi = db.Column(db.Text)
@@ -107,15 +110,19 @@ def logout():
 @role_required('superadmin')
 def admin_dashboard():
     if request.method == 'POST':
-        baru = User(
-            username=request.form['username'],
-            nama_lengkap=request.form['nama_lengkap'],
-            password=request.form['password'],
-            role=request.form['role']
-        )
-        db.session.add(baru)
-        db.session.commit()
-        flash(f"User {baru.nama_lengkap} berhasil ditambahkan!", "success")
+        try:
+            baru = User(
+                username=request.form['username'],
+                nama_lengkap=request.form['nama_lengkap'],
+                password=request.form['password'],
+                role=request.form['role']
+            )
+            db.session.add(baru)
+            db.session.commit()
+            flash(f"User {baru.nama_lengkap} berhasil ditambahkan!", "success")
+        except IntegrityError:
+            db.session.rollback()
+            flash("GAGAL: Username (PN) tersebut sudah terdaftar di sistem! Silakan gunakan PN yang berbeda.", "danger")
         return redirect('/admin')
     users = User.query.all()
     return render_template('admin.html', users=users)
@@ -137,6 +144,7 @@ def input_data():
     if request.method == 'POST':
         tgl_obj = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
         baru = DataRPM(
+            no_lha=request.form['no_lha'], # Menerima input No LHA
             jenis_audit=request.form['jenis_audit'], unit_kerja=request.form['unit_kerja'], deskripsi=request.form['deskripsi'],
             tenggat_waktu=tgl_obj, nama_pic=request.form['nama_pic'], wa_auditee=request.form['wa_auditee'],
             nama_auditor=request.form['nama_auditor'], wa_auditor=request.form['wa_auditor'],
