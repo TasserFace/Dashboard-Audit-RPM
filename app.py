@@ -76,7 +76,6 @@ class DataRPM(db.Model):
     file_bukti = db.Column(db.String(200), nullable=True)
     file_ba_kesepakatan = db.Column(db.String(200), nullable=True)
 
-# FITUR BARU: Tabel Riwayat Log Akses
 class ActivityLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     waktu = db.Column(db.DateTime, default=datetime.now)
@@ -88,12 +87,7 @@ class ActivityLog(db.Model):
 # --- FUNGSI GLOBAL & KEAMANAN ---
 def catat_log(aktivitas):
     if 'username' in session:
-        log = ActivityLog(
-            username=session['username'],
-            nama_lengkap=session['nama_lengkap'],
-            role=session['role'],
-            aktivitas=aktivitas
-        )
+        log = ActivityLog(username=session['username'], nama_lengkap=session['nama_lengkap'], role=session['role'], aktivitas=aktivitas)
         db.session.add(log)
         db.session.commit()
 
@@ -135,7 +129,7 @@ def login():
             session['username'] = user.username
             session['nama_lengkap'] = user.nama_lengkap
             session['role'] = user.role
-            catat_log("Login ke dalam sistem") # PENCATATAN LOG
+            catat_log("Login ke dalam sistem")
             return redirect('/admin') if user.role == 'superadmin' else redirect('/')
         else:
             flash("Username atau Password salah!", "danger")
@@ -162,7 +156,6 @@ def forgot_password():
                 pesan_wa = f"Halo *{user.nama_lengkap}*,\n\nBerikut adalah password baru untuk akun SIMA RPM Anda:\n\n🔑 *{new_password}*\n\nSilakan login kembali dan jaga kerahasiaan password ini."
                 send_wa_fonnte(user.no_wa, pesan_wa)
                 
-                # Cek manual log karena session belum terbentuk (user lupa pass)
                 log = ActivityLog(username=user.username, nama_lengkap=user.nama_lengkap, role=user.role, aktivitas="Melakukan Request Lupa Password via WA")
                 db.session.add(log)
                 db.session.commit()
@@ -197,7 +190,6 @@ def admin_dashboard():
 @login_required
 @role_required('superadmin')
 def admin_logs():
-    # Menampilkan riwayat log terbaru (maksimal 500)
     logs = ActivityLog.query.order_by(ActivityLog.waktu.desc()).limit(500).all()
     return render_template('logs.html', logs=logs)
 
@@ -239,6 +231,19 @@ def admin_edit_user(id):
     user.role = new_role
     db.session.commit()
     flash(f"Kewenangan user {user.nama_lengkap} berhasil diubah.", "success")
+    return redirect('/admin')
+
+@app.route('/admin/edit_wa/<int:id>', methods=['POST'])
+@login_required
+@role_required('superadmin')
+def admin_edit_wa(id):
+    user = User.query.get_or_404(id)
+    new_wa = request.form['new_wa']
+    old_wa = user.no_wa
+    user.no_wa = new_wa
+    db.session.commit()
+    catat_log(f"Super Admin mengubah No WA {user.nama_lengkap} dari {old_wa} menjadi {new_wa}")
+    flash(f"Nomor WhatsApp untuk {user.nama_lengkap} berhasil diperbarui!", "success")
     return redirect('/admin')
 
 # --- ROUTE UTAMA ---
@@ -327,7 +332,6 @@ def edit_data(id):
         return redirect('/monitoring')
     return render_template('edit.html', item=rpm)
 
-# FITUR BARU: Usulan Hapus Data RPM oleh Auditor
 @app.route('/request_delete/<int:id>', methods=['POST'])
 @login_required
 @role_required('auditor')
@@ -370,7 +374,6 @@ def process_approval(id):
 
     rpm = DataRPM.query.get_or_404(id)
     
-    # JIKA USULANNYA ADALAH HAPUS RPM
     if rpm.usulan_status == 'HAPUS':
         if action == 'terima':
             catat_log(f"Menyetujui penghapusan permanen RPM (LHA: {rpm.no_lha} - {rpm.unit_kerja})")
@@ -391,8 +394,6 @@ def process_approval(id):
             send_wa_fonnte(rpm.wa_auditor, f"❌ Usulan penghapusan RPM LHA {rpm.no_lha} DITOLAK Ketua Tim.")
             flash("Usulan penghapusan dibatalkan/ditolak.", "warning")
             return redirect('/approval')
-            
-    # JIKA USULANNYA ADALAH UBAH STATUS BIASA
     else:
         if action == 'terima':
             rpm.status = rpm.usulan_status
@@ -410,34 +411,17 @@ def process_approval(id):
         else:
             catat_log(f"Menolak usulan perubahan status RPM (LHA: {rpm.no_lha})")
             send_wa_fonnte(rpm.wa_auditor, f"❌ Usulan status RPM LHA {rpm.no_lha} DITOLAK Ketua Tim.")
-            
             rpm.status_approval = None
             rpm.usulan_status = None
             db.session.commit()
             flash("Usulan perubahan ditolak.", "warning")
-            
         return redirect('/approval')
 
 @app.route('/uploads/<name>')
 @login_required
 def download_file(name):
     return send_from_directory(app.config['UPLOAD_FOLDER'], name)
-# --- FITUR BARU: GANTI NOMOR WA OLEH USER ---
-@app.route('/update_wa', methods=['POST'])
-@login_required
-def update_wa():
-    user = User.query.filter_by(username=session['username']).first()
-    # Otorisasi menggunakan password sebelum mengubah No WA
-    if check_password_hash(user.password, request.form['password_otorisasi']):
-        user.no_wa = request.form['new_wa']
-        db.session.commit()
-        catat_log(f"Memperbarui Nomor WhatsApp menjadi {user.no_wa}")
-        flash("Nomor WhatsApp Anda berhasil diperbarui!", "success")
-    else:
-        flash("GAGAL: Password otorisasi Anda salah!", "danger")
-    
-    # Kembali ke halaman sebelumnya
-    return redirect(request.referrer or '/')
+
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
