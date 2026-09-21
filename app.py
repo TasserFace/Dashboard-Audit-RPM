@@ -15,11 +15,9 @@ app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
 
 # --- FUNGSI ZONA WAKTU INDONESIA BARAT (GMT+7) ---
 def waktu_sekarang():
-    """Mengambil waktu saat ini dalam zona WIB (GMT+7)"""
     return datetime.utcnow() + timedelta(hours=7)
 
 def hari_ini_wib():
-    """Mengambil tanggal hari ini dalam zona WIB"""
     return waktu_sekarang().date()
 
 # --- KONFIGURASI API FONNTE ---
@@ -87,14 +85,13 @@ class DataRPM(db.Model):
 
 class ActivityLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    # Default menggunakan waktu WIB
     waktu = db.Column(db.DateTime, default=waktu_sekarang)
     username = db.Column(db.String(50))
     nama_lengkap = db.Column(db.String(100))
     role = db.Column(db.String(20))
     aktivitas = db.Column(db.Text)
 
-# --- FUNGSI GLOBAL & KEAMANAN (Dengan Auto-Cleanup 24 Jam) ---
+# --- FUNGSI GLOBAL & KEAMANAN ---
 def bersihkan_log_lama():
     batas_waktu = waktu_sekarang() - timedelta(hours=24)
     ActivityLog.query.filter(ActivityLog.waktu < batas_waktu).delete()
@@ -188,17 +185,34 @@ def forgot_password():
 @role_required('superadmin')
 def admin_dashboard():
     if request.method == 'POST':
+        no_wa_baru = request.form['no_wa']
+        username_baru = request.form['username']
+        
+        # Pengecekan 1: Apakah Username (PN) sudah ada?
+        cek_username = User.query.filter_by(username=username_baru).first()
+        if cek_username:
+            flash(f"GAGAL: Username (PN) '{username_baru}' sudah terdaftar di sistem!", "danger")
+            return redirect('/admin')
+            
+        # Pengecekan 2: Apakah No WA sudah ada?
+        cek_wa = User.query.filter_by(no_wa=no_wa_baru).first()
+        if cek_wa:
+            flash(f"GAGAL: Nomor WhatsApp {no_wa_baru} sudah digunakan oleh akun '{cek_wa.nama_lengkap}'!", "danger")
+            return redirect('/admin')
+            
         try:
             hashed_pw = generate_password_hash(request.form['password'])
-            baru = User(username=request.form['username'], nama_lengkap=request.form['nama_lengkap'], password=hashed_pw, no_wa=request.form['no_wa'], role=request.form['role'])
+            baru = User(username=username_baru, nama_lengkap=request.form['nama_lengkap'], password=hashed_pw, no_wa=no_wa_baru, role=request.form['role'])
             db.session.add(baru)
             db.session.commit()
             catat_log(f"Menambahkan user baru: {baru.nama_lengkap} ({baru.role})")
             flash(f"User {baru.nama_lengkap} berhasil ditambahkan!", "success")
         except IntegrityError:
             db.session.rollback()
-            flash("GAGAL: Username (PN) tersebut sudah terdaftar di sistem!", "danger")
+            flash("GAGAL: Terjadi kesalahan pada integritas database!", "danger")
+            
         return redirect('/admin')
+        
     users = User.query.all()
     return render_template('admin.html', users=users)
 
@@ -247,6 +261,26 @@ def admin_edit_user(id):
     user.role = new_role
     db.session.commit()
     flash(f"Kewenangan user {user.nama_lengkap} berhasil diubah.", "success")
+    return redirect('/admin')
+
+@app.route('/admin/edit_wa/<int:id>', methods=['POST'])
+@login_required
+@role_required('superadmin')
+def admin_edit_wa(id):
+    user = User.query.get_or_404(id)
+    new_wa = request.form['new_wa']
+    
+    # Pengecekan: Pastikan No WA baru belum dipakai orang lain (selain dirinya sendiri)
+    cek_wa = User.query.filter(User.no_wa == new_wa, User.id != id).first()
+    if cek_wa:
+        flash(f"GAGAL: Nomor WhatsApp {new_wa} sudah dipakai oleh user '{cek_wa.nama_lengkap}'!", "danger")
+        return redirect('/admin')
+        
+    old_wa = user.no_wa
+    user.no_wa = new_wa
+    db.session.commit()
+    catat_log(f"Super Admin mengubah No WA {user.nama_lengkap} dari {old_wa} menjadi {new_wa}")
+    flash(f"Nomor WhatsApp untuk {user.nama_lengkap} berhasil diperbarui!", "success")
     return redirect('/admin')
 
 # --- ROUTE UTAMA ---
