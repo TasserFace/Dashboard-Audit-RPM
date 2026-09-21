@@ -12,17 +12,14 @@
         .text-nusantara { color: #0857C3 !important; }
         .text-mentari { color: #71C5E8 !important; }
         .table-header { color: #0857C3 !important; font-weight: bold; border-bottom: 2px solid #0857C3; }
-        
-        /* Efek Hover untuk Baris yang Bisa Diklik */
         .clickable-row { cursor: pointer; transition: background-color 0.2s; }
         .clickable-row:hover { background-color: #f1f3f5 !important; }
-        
         .badge-notif { font-size: 0.85em; transform: translateY(-2px); margin-left: 5px; }
         #filterPanel { transition: all 0.3s ease-in-out; }
     </style>
 </head>
 <body class="bg-light">
-    <!-- Navbar (Tanpa Dropdown, Tanpa Fitur Ganti WA) -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
@@ -121,8 +118,9 @@
             </div>
         </div>
 
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 mb-5">
             <div class="card-body p-0">
+                <!-- STRUKTUR TABEL MURNI -->
                 <table class="table align-middle mb-0 text-nusantara" id="rpmTable">
                     <thead>
                         <tr>
@@ -142,7 +140,7 @@
                             data-sisa="{{ item.sisa_hari }}" data-status="{{ item.status }}"
                             data-ba="{% if item.no_ba_kesepakatan %}yes{% else %}no{% endif %}">
                             
-                            <!-- Kolom-kolom ini memicu Pop-Up Detail -->
+                            <!-- Kolom Pemicu Modal -->
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.no_lha }}</strong></td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.unit_kerja }}</td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
@@ -157,7 +155,7 @@
                             </td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.nama_auditor }}</td>
                             
-                            <!-- Kolom Aksi tidak memicu Pop-Up Detail -->
+                            <!-- Kolom Aksi -->
                             <td class="text-center">
                                 {% if session['role'] == 'auditor' %}
                                 <a href="/edit/{{ item.id }}" class="btn btn-sm bg-secondary fw-bold text-white d-block mb-1">Tindak Lanjut</a>
@@ -167,78 +165,87 @@
                                 {% endif %}
                             </td>
                         </tr>
-
-                        <!-- Modal Detail RPM -->
-                        <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
-                          <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content border-0">
-                              <div class="modal-header bg-cakrawala text-white">
-                                <h5 class="modal-title fw-bold">Rincian RPM: {{ item.unit_kerja }}</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                              </div>
-                              <div class="modal-body">
-                                
-                                <h6 class="fw-bold text-nusantara">Informasi Laporan:</h6>
-                                <p class="text-dark mb-1"><strong>No. LHA:</strong> {{ item.no_lha }}</p>
-                                <p class="text-dark mb-3"><strong>Jenis Audit:</strong> {{ item.jenis_audit }}</p>
-
-                                <h6 class="fw-bold text-nusantara">Deskripsi Tindak Lanjut:</h6>
-                                <p class="border border-info p-2 rounded bg-light text-dark mb-3">{{ item.deskripsi }}</p>
-                                
-                                <h6 class="fw-bold text-nusantara mt-3">Kontak Unit Kerja (Auditee):</h6>
-                                <table class="table table-sm text-dark mb-3">
-                                    <tr><td>Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
-                                    <tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
-                                </table>
-
-                                {% if item.no_ba_kesepakatan %}
-                                <h6 class="fw-bold text-nusantara mt-3">Riwayat Kesepakatan Ulang (BA):</h6>
-                                <div class="border border-warning p-2 rounded bg-light text-dark">
-                                    <p class="mb-1"><strong>No. BA:</strong> {{ item.no_ba_kesepakatan }} (Tgl: {{ item.tgl_ba_kesepakatan.strftime('%d-%m-%Y') }})</p>
-                                    {% if item.file_ba_kesepakatan %}
-                                    <a href="/uploads/{{ item.file_ba_kesepakatan }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold mt-1">Lihat Dokumen BA</a>
-                                    {% endif %}
-                                </div>
-                                {% endif %}
-
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Modal Usulkan Hapus RPM (Auditor) -->
-                        <div class="modal fade" id="modalDeleteRpm{{ item.id }}" tabindex="-1">
-                          <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content border-0 border-top border-4 border-danger">
-                              <div class="modal-header bg-danger text-white">
-                                <h5 class="modal-title fw-bold">Usulkan Penghapusan RPM</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                              </div>
-                              <form action="/request_delete/{{ item.id }}" method="POST">
-                                  <div class="modal-body text-start">
-                                    <p class="text-dark">Anda akan mengajukan penghapusan RPM LHA: <strong>{{ item.no_lha }}</strong> ({{ item.unit_kerja }}).</p>
-                                    <p class="text-danger small fw-bold">Data tidak akan langsung terhapus sampai disetujui Ketua Tim Audit.</p>
-                                    <label class="fw-bold text-danger mt-2">Otorisasi Akun (Password Anda):</label>
-                                    <input type="password" class="form-control border-danger mt-1" name="password_otorisasi" required placeholder="Masukkan password Anda">
-                                  </div>
-                                  <div class="modal-footer border-0">
-                                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
-                                    <button type="submit" class="btn btn-danger fw-bold">Kirim Usulan Hapus</button>
-                                  </div>
-                              </form>
-                            </div>
-                          </div>
-                        </div>
-
                         {% endfor %}
                     </tbody>
                 </table>
+                <!-- Akhir Struktur Tabel Murni -->
+
                 <div id="noDataMessage" class="text-center py-4 text-muted fw-bold" style="display: none;">
                     Tidak ada data yang cocok dengan kriteria pencarian/filter.
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- ========================================== -->
+    <!-- SEMUA MODAL DILETAKKAN DI LUAR TABEL HTML -->
+    <!-- ========================================== -->
+    {% for item in data %}
+    
+    <!-- Modal Detail RPM -->
+    <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-cakrawala text-white">
+            <h5 class="modal-title fw-bold">Rincian RPM: {{ item.unit_kerja }}</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+            
+            <h6 class="fw-bold text-nusantara">Informasi Laporan:</h6>
+            <p class="text-dark mb-1"><strong>No. LHA:</strong> {{ item.no_lha }}</p>
+            <p class="text-dark mb-3"><strong>Jenis Audit:</strong> {{ item.jenis_audit }}</p>
+
+            <h6 class="fw-bold text-nusantara">Deskripsi Tindak Lanjut:</h6>
+            <p class="border border-info p-2 rounded bg-light text-dark mb-3">{{ item.deskripsi }}</p>
+            
+            <h6 class="fw-bold text-nusantara mt-3">Kontak Unit Kerja (Auditee):</h6>
+            <table class="table table-sm text-dark mb-3">
+                <tr><td>Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
+                <tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
+            </table>
+
+            {% if item.no_ba_kesepakatan %}
+            <h6 class="fw-bold text-nusantara mt-3">Riwayat Kesepakatan Ulang (BA):</h6>
+            <div class="border border-warning p-2 rounded bg-light text-dark">
+                <p class="mb-1"><strong>No. BA:</strong> {{ item.no_ba_kesepakatan }} (Tgl: {{ item.tgl_ba_kesepakatan.strftime('%d-%m-%Y') }})</p>
+                {% if item.file_ba_kesepakatan %}
+                <a href="/uploads/{{ item.file_ba_kesepakatan }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold mt-1">Lihat Dokumen BA</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Modal Usulkan Hapus RPM (Auditor) -->
+    <div class="modal fade" id="modalDeleteRpm{{ item.id }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 border-top border-4 border-danger">
+            <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title fw-bold">Usulkan Penghapusan RPM</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/request_delete/{{ item.id }}" method="POST">
+                <div class="modal-body text-start">
+                <p class="text-dark">Anda akan mengajukan penghapusan RPM LHA: <strong>{{ item.no_lha }}</strong> ({{ item.unit_kerja }}).</p>
+                <p class="text-danger small fw-bold">Data tidak akan langsung terhapus sampai disetujui Ketua Tim Audit.</p>
+                <label class="fw-bold text-danger mt-2">Otorisasi Akun (Password Anda):</label>
+                <input type="password" class="form-control border-danger mt-1" name="password_otorisasi" required placeholder="Masukkan password Anda">
+                </div>
+                <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-danger fw-bold">Kirim Usulan Hapus</button>
+                </div>
+            </form>
+        </div>
+        </div>
+    </div>
+    
+    {% endfor %}
+    <!-- ========================================== -->
 
     <script>
         function applyFilters() {
