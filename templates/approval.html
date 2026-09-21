@@ -16,7 +16,7 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item"><a class="nav-link text-white" href="/">Ringkasan</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="/monitoring">Monitoring RPM</a></li>
-                    <li class="nav-item"><a class="nav-link active fw-bold text-warning" href="/approval">Menu Approval</a></li>
+                    <li class="nav-item"><a class="nav-link active fw-bold text-mentari" href="/approval">Menu Approval</a></li>
                 </ul>
                 <div class="d-flex text-white align-items-center ms-auto">
                     <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
@@ -38,60 +38,37 @@
                 <div class="row align-items-center">
                     <div class="col-md-7">
                         <h5 class="fw-bold text-nusantara">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6">{{ item.jenis_audit }}</span></h5>
-                        
                         <p class="mb-1 text-muted d-flex align-items-center">
-                            Diusulkan oleh Auditor: <strong class="ms-1 me-3">{{ item.nama_auditor }}</strong>
-                            <button type="button" class="btn btn-sm btn-outline-info fw-bold text-dark py-0" data-bs-toggle="modal" data-bs-target="#modalDeskripsi{{ item.id }}">
-                                🔍 Lihat Deskripsi RPM
-                            </button>
+                            Diusulkan oleh: <strong class="ms-1 me-3">{{ item.nama_auditor }}</strong>
+                            <button type="button" class="btn btn-sm btn-outline-info fw-bold text-dark py-0" data-bs-toggle="modal" data-bs-target="#modalDeskripsi{{ item.id }}">🔍 Lihat Deskripsi</button>
                         </p>
-                        
                         {% if item.usulan_status == 'HAPUS' %}
-                        <div class="bg-danger bg-opacity-10 p-3 rounded mt-2 border border-danger">
+                        <div class="bg-danger bg-opacity-10 p-2 rounded mt-2 border border-danger">
                             <h6 class="text-danger fw-bold mb-1">⚠️ USULAN PENGHAPUSAN PERMANEN</h6>
-                            <p class="text-dark small mb-0">Auditor mengajukan penghapusan pada LHA <strong>{{ item.no_lha }}</strong>.</p>
                         </div>
                         {% else %}
                         <div class="bg-light p-2 rounded mt-2 border">
-                            <strong>Perubahan Status:</strong> <span class="text-danger">{{ item.status }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_status }}</span><br>
-                            {% if item.file_bukti %}
-                            <strong class="text-primary mt-1 d-block">📄 Bukti Status: <a href="/uploads/{{ item.file_bukti }}" target="_blank" class="text-decoration-none">Lihat Dokumen</a></strong>
-                            {% endif %}
-                            
-                            {% if item.usulan_tenggat and item.tenggat_waktu and item.usulan_tenggat != item.tenggat_waktu %}
-                            <hr class="my-2">
-                            <strong>Perubahan Tenggat:</strong> <span class="text-danger">{{ item.tenggat_waktu }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_tenggat }}</span><br>
-                            <span class="text-muted d-block mt-1">Dasar: BA No. <strong>{{ item.no_ba_kesepakatan }}</strong></span>
-                            {% if item.file_ba_kesepakatan %}
-                            <strong class="text-primary mt-1 d-block">📄 File BA: <a href="/uploads/{{ item.file_ba_kesepakatan }}" target="_blank" class="text-decoration-none">Lihat File BA</a></strong>
-                            {% endif %}
-                            {% endif %}
+                            <strong>Perubahan Status:</strong> <span class="text-danger">{{ item.status }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_status }}</span>
                         </div>
                         {% endif %}
                     </div>
                     
                     <div class="col-md-5 text-end border-start">
-                        <p class="small text-muted mb-2">Tanggung Jawab: <strong>{{ item.nama_ketua_tim }}</strong></p>
+                        <p class="small text-muted mb-2">Penanggung Jawab: <strong>{{ item.nama_ketua_tim }}</strong></p>
                         
-                        <!-- KONTROL AKSES TOMBOL PERSETUJUAN -->
+                        <!-- KONTROL OTORISASI BERDASARKAN NO_WA -->
                         {% if session['no_wa'] == item.wa_ketua_tim %}
-                            <!-- Jika ini tanggung jawab KT yang sedang Login -->
                             <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
                                 <input type="hidden" name="action" value="tolak">
                                 <input type="hidden" name="password_otorisasi" value="tolak_sementara"> 
                                 <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
                             </form>
-                            
-                            {% if item.usulan_status == 'HAPUS' %}
-                            <button class="btn btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui Hapus</button>
-                            {% else %}
-                            <button class="btn btn-success fw-bold bg-nusantara shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui</button>
-                            {% endif %}
-                            
+                            <button class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success bg-nusantara{% endif %} fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">
+                                {% if item.usulan_status == 'HAPUS' %}Setujui Hapus{% else %}Setujui{% endif %}
+                            </button>
                         {% else %}
-                            <!-- Jika tanggung jawab KT lain, maka tombol di-disable -->
-                            <button class="btn btn-outline-secondary fw-bold me-2" disabled>Tolak (Bukan Otoritas)</button>
-                            <button class="btn btn-secondary fw-bold shadow-sm" disabled>Setujui (Bukan Otoritas)</button>
+                            <button class="btn btn-outline-secondary fw-bold me-2" disabled>Bukan Otoritas</button>
+                            <button class="btn btn-secondary fw-bold" disabled>Bukan Otoritas</button>
                         {% endif %}
                     </div>
                 </div>
@@ -103,13 +80,11 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 border-top border-4 border-info">
                     <div class="modal-header bg-info text-dark">
-                        <h5 class="modal-title fw-bold">Detail & Deskripsi Tindak Lanjut</h5>
+                        <h5 class="modal-title fw-bold">Detail Deskripsi</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body text-start">
-                        <p class="mb-1"><strong>No. LHA:</strong> {{ item.no_lha }}</p>
-                        <p class="mb-3"><strong>Unit Kerja:</strong> {{ item.unit_kerja }}</p>
-                        <h6 class="fw-bold text-nusantara mt-2">Deskripsi RPM:</h6>
+                        <p class="mb-1"><strong>LHA:</strong> {{ item.no_lha }}</p>
                         <p class="border border-info p-3 rounded bg-light text-dark" style="white-space: pre-wrap;">{{ item.deskripsi }}</p>
                     </div>
                 </div>
@@ -130,17 +105,15 @@
                             <input type="hidden" name="action" value="terima">
                             {% if item.usulan_status == 'HAPUS' %}
                             <div class="alert alert-danger bg-danger bg-opacity-10 text-danger border-danger fw-bold text-center px-2 py-3 mb-3">
-                                🛑 PERINGATAN 🛑<br>Yakin menyetujui PENGHAPUSAN PERMANEN RPM {{ item.unit_kerja }}?
+                                🛑 Yakin menyetujui PENGHAPUSAN PERMANEN?
                             </div>
                             {% endif %}
-                            <label class="fw-bold {% if item.usulan_status == 'HAPUS' %}text-danger{% else %}text-nusantara{% endif %}">Masukkan Password (Ketua Tim):</label>
-                            <input type="password" class="form-control {% if item.usulan_status == 'HAPUS' %}border-danger{% else %}border-primary{% endif %} mt-2" name="password_otorisasi" required>
+                            <label class="fw-bold">Password Anda:</label>
+                            <input type="password" class="form-control mt-2" name="password_otorisasi" required>
                         </div>
                         <div class="modal-footer border-0">
                             <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
-                            <button type="submit" class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success{% endif %} fw-bold">
-                                {% if item.usulan_status == 'HAPUS' %}Verifikasi & Hapus Permanen{% else %}Verifikasi & Setujui{% endif %}
-                            </button>
+                            <button type="submit" class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success{% endif %} fw-bold">Verifikasi</button>
                         </div>
                     </form>
                 </div>
@@ -149,7 +122,7 @@
         {% endif %}
         
         {% else %}
-        <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan di dalam sistem.</div>
+        <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan.</div>
         {% endfor %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
