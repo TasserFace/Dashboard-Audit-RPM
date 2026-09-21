@@ -13,6 +13,15 @@ from datetime import datetime, date, timedelta
 app = Flask(__name__)
 app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
 
+# --- FUNGSI ZONA WAKTU INDONESIA BARAT (GMT+7) ---
+def waktu_sekarang():
+    """Mengambil waktu saat ini dalam zona WIB (GMT+7)"""
+    return datetime.utcnow() + timedelta(hours=7)
+
+def hari_ini_wib():
+    """Mengambil tanggal hari ini dalam zona WIB"""
+    return waktu_sekarang().date()
+
 # --- KONFIGURASI API FONNTE ---
 FONNTE_TOKEN = "MASUKKAN_TOKEN_API_FONNTE_ANDA_DISINI"
 
@@ -78,7 +87,8 @@ class DataRPM(db.Model):
 
 class ActivityLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    waktu = db.Column(db.DateTime, default=datetime.now)
+    # Default menggunakan waktu WIB
+    waktu = db.Column(db.DateTime, default=waktu_sekarang)
     username = db.Column(db.String(50))
     nama_lengkap = db.Column(db.String(100))
     role = db.Column(db.String(20))
@@ -86,14 +96,12 @@ class ActivityLog(db.Model):
 
 # --- FUNGSI GLOBAL & KEAMANAN (Dengan Auto-Cleanup 24 Jam) ---
 def bersihkan_log_lama():
-    """Fungsi ini otomatis dipanggil setiap ada aktivitas untuk menghapus log > 24 Jam"""
-    batas_waktu = datetime.now() - timedelta(hours=24)
+    batas_waktu = waktu_sekarang() - timedelta(hours=24)
     ActivityLog.query.filter(ActivityLog.waktu < batas_waktu).delete()
-    # (Tidak perlu di-commit di sini, karena akan ikut ter-commit di fungsi catat_log)
 
 def catat_log(aktivitas):
     if 'username' in session:
-        bersihkan_log_lama() # Eksekusi pembersihan log lama
+        bersihkan_log_lama() 
         log = ActivityLog(username=session['username'], nama_lengkap=session['nama_lengkap'], role=session['role'], aktivitas=aktivitas)
         db.session.add(log)
         db.session.commit()
@@ -163,7 +171,6 @@ def forgot_password():
                 pesan_wa = f"Halo *{user.nama_lengkap}*,\n\nBerikut adalah password baru untuk akun SIMA RPM Anda:\n\n🔑 *{new_password}*\n\nSilakan login kembali dan jaga kerahasiaan password ini."
                 send_wa_fonnte(user.no_wa, pesan_wa)
                 
-                # Pembersihan log otomatis juga diterapkan di sini
                 bersihkan_log_lama()
                 log = ActivityLog(username=user.username, nama_lengkap=user.nama_lengkap, role=user.role, aktivitas="Melakukan Request Lupa Password via WA")
                 db.session.add(log)
@@ -242,25 +249,12 @@ def admin_edit_user(id):
     flash(f"Kewenangan user {user.nama_lengkap} berhasil diubah.", "success")
     return redirect('/admin')
 
-@app.route('/admin/edit_wa/<int:id>', methods=['POST'])
-@login_required
-@role_required('superadmin')
-def admin_edit_wa(id):
-    user = User.query.get_or_404(id)
-    new_wa = request.form['new_wa']
-    old_wa = user.no_wa
-    user.no_wa = new_wa
-    db.session.commit()
-    catat_log(f"Super Admin mengubah No WA {user.nama_lengkap} dari {old_wa} menjadi {new_wa}")
-    flash(f"Nomor WhatsApp untuk {user.nama_lengkap} berhasil diperbarui!", "success")
-    return redirect('/admin')
-
 # --- ROUTE UTAMA ---
 @app.route('/')
 @login_required
 def dashboard_summary():
     if session.get('role') == 'superadmin': return redirect('/admin')
-    hari_ini = date.today()
+    hari_ini = hari_ini_wib()
     data_rpm = DataRPM.query.all()
     total = len(data_rpm)
     selesai = sum(1 for item in data_rpm if item.status == 'Memadai')
@@ -272,7 +266,7 @@ def dashboard_summary():
 @login_required
 def monitoring():
     if session.get('role') == 'superadmin': return redirect('/admin')
-    hari_ini = date.today()
+    hari_ini = hari_ini_wib()
     data_rpm = DataRPM.query.all()
     for item in data_rpm: item.sisa_hari = (item.tenggat_waktu - hari_ini).days
     data_rpm_sorted = sorted(data_rpm, key=lambda x: (1 if x.status == 'Memadai' else 0, x.sisa_hari))
@@ -314,7 +308,7 @@ def edit_data(id):
             if not file or not allowed_file(file.filename):
                 flash("WAJIB mengunggah file bukti status!", "danger")
                 return redirect(f'/edit/{id}')
-            filename = secure_filename(f"RPM_{id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}")
+            filename = secure_filename(f"RPM_{id}_{waktu_sekarang().strftime('%Y%m%d%H%M%S')}_{file.filename}")
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             rpm.file_bukti = filename
 
@@ -326,7 +320,7 @@ def edit_data(id):
             if not file_ba or not allowed_file(file_ba.filename):
                 flash("WAJIB mengunggah File BA!", "danger")
                 return redirect(f'/edit/{id}')
-            filename_ba = secure_filename(f"BA_{id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{file_ba.filename}")
+            filename_ba = secure_filename(f"BA_{id}_{waktu_sekarang().strftime('%Y%m%d%H%M%S')}_{file_ba.filename}")
             file_ba.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_ba))
             rpm.file_ba_kesepakatan = filename_ba
             
