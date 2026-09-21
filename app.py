@@ -365,7 +365,10 @@ def request_delete(id):
 @login_required
 def approval_dashboard():
     if session.get('role') == 'superadmin': return redirect('/admin')
-    usulan = DataRPM.query.filter_by(status_approval='Menunggu Approval').all()
+    
+    # PERBAIKAN: Hanya tarik data dari database yang wa_ketua_tim nya cocok dengan WA user yang login
+    usulan = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=session.get('no_wa')).all()
+    
     return render_template('approval.html', usulan=usulan)
 
 @app.route('/process_approval/<int:id>', methods=['POST'])
