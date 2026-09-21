@@ -43,11 +43,9 @@
                     </li>
                     {% endif %}
                 </ul>
-                
                 <div class="mx-auto text-white fw-bold text-uppercase px-4 py-2 bg-cakrawala border border-white rounded shadow-sm">
                     LOGIN AS: {{ 'KETUA TIM AUDIT' if session['role'] == 'ketuatim' else 'AUDITOR' }}
                 </div>
-
                 <div class="d-flex text-white align-items-center ms-auto">
                     <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
                     <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
@@ -63,7 +61,6 @@
         
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="fw-bold mb-0 text-nusantara">Daftar Rencana Perbaikan Manajemen</h4>
-            
             <div class="d-flex w-50 justify-content-end">
                 <input type="text" id="searchInput" class="form-control border-primary shadow-sm w-50 filter-input me-2" placeholder="🔍 Cari Bebas (LHA, Unit, Status)...">
                 <button class="btn btn-primary fw-bold shadow-sm bg-nusantara" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel">
@@ -77,14 +74,24 @@
             <div class="card card-body shadow-sm border-0 border-start border-4 border-primary bg-light">
                 <h6 class="fw-bold text-nusantara mb-3">Filter Pencarian Detail</h6>
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label text-muted fw-bold small">Nomor LHA</label>
                         <input type="text" id="f_lha" class="form-control form-control-sm border-primary filter-input" placeholder="Ketik No LHA...">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label text-muted fw-bold small">Unit Kerja</label>
                         <input type="text" id="f_unit" class="form-control form-control-sm border-primary filter-input" placeholder="Ketik Unit Kerja...">
                     </div>
+                    
+                    <!-- TAMBAHAN: FILTER TANGGUNG JAWAB -->
+                    <div class="col-md-2">
+                        <label class="form-label text-primary fw-bold small">Kepemilikan</label>
+                        <select id="f_tanggung_jawab" class="form-select form-select-sm border-primary filter-input bg-info bg-opacity-10">
+                            <option value="">Semua Data</option>
+                            <option value="saya">Tanggung Jawab Saya</option>
+                        </select>
+                    </div>
+
                     <div class="col-md-2">
                         <label class="form-label text-muted fw-bold small">Sisa Hari</label>
                         <select id="f_sisa" class="form-select form-select-sm border-primary filter-input">
@@ -104,11 +111,11 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label text-muted fw-bold small">Kesepakatan Ulang (BA)</label>
+                        <label class="form-label text-muted fw-bold small">Kesepakatan (BA)</label>
                         <select id="f_ba" class="form-select form-select-sm border-primary filter-input">
                             <option value="">Semua</option>
-                            <option value="yes">Pernah Diubah (Ada BA)</option>
-                            <option value="no">Belum Pernah Diubah</option>
+                            <option value="yes">Pernah Diubah</option>
+                            <option value="no">Belum Pernah</option>
                         </select>
                     </div>
                 </div>
@@ -120,7 +127,6 @@
 
         <div class="card shadow-sm border-0 mb-5">
             <div class="card-body p-0">
-                <!-- STRUKTUR TABEL MURNI -->
                 <table class="table align-middle mb-0 text-nusantara" id="rpmTable">
                     <thead>
                         <tr>
@@ -135,10 +141,12 @@
                     </thead>
                     <tbody>
                         {% for item in data %}
+                        <!-- Menambahkan atribut data-wa untuk dibaca oleh filter JS -->
                         <tr class="clickable-row filter-row {% if item.sisa_hari < 14 and item.status != 'Memadai' %}table-danger{% endif %}"
                             data-lha="{{ item.no_lha|lower }}" data-unit="{{ item.unit_kerja|lower }}"
                             data-sisa="{{ item.sisa_hari }}" data-status="{{ item.status }}"
-                            data-ba="{% if item.no_ba_kesepakatan %}yes{% else %}no{% endif %}">
+                            data-ba="{% if item.no_ba_kesepakatan %}yes{% else %}no{% endif %}"
+                            data-wa-auditor="{{ item.wa_auditor }}" data-wa-kt="{{ item.wa_ketua_tim }}">
                             
                             <!-- Kolom Pemicu Modal -->
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.no_lha }}</strong></td>
@@ -155,21 +163,26 @@
                             </td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.nama_auditor }}</td>
                             
-                            <!-- Kolom Aksi -->
+                            <!-- KONTROL AKSES TOMBOL AKSI -->
                             <td class="text-center">
                                 {% if session['role'] == 'auditor' %}
-                                <a href="/edit/{{ item.id }}" class="btn btn-sm bg-secondary fw-bold text-white d-block mb-1">Tindak Lanjut</a>
-                                <button class="btn btn-sm btn-danger fw-bold text-white d-block w-100" data-bs-toggle="modal" data-bs-target="#modalDeleteRpm{{ item.id }}">Hapus RPM</button>
+                                    {% if session['no_wa'] == item.wa_auditor %}
+                                        <!-- Tombol Aktif (Milik Sendiri) -->
+                                        <a href="/edit/{{ item.id }}" class="btn btn-sm bg-secondary fw-bold text-white d-block mb-1">Tindak Lanjut</a>
+                                        <button class="btn btn-sm btn-danger fw-bold text-white d-block w-100" data-bs-toggle="modal" data-bs-target="#modalDeleteRpm{{ item.id }}">Hapus RPM</button>
+                                    {% else %}
+                                        <!-- Tombol Non-Aktif (Milik Teman Auditor Lain) -->
+                                        <button class="btn btn-sm bg-secondary text-white opacity-50 d-block mb-1 w-100" disabled>Bukan Otoritas</button>
+                                        <button class="btn btn-sm btn-danger text-white opacity-50 d-block w-100" disabled>Bukan Otoritas</button>
+                                    {% endif %}
                                 {% else %}
-                                <button class="btn btn-sm bg-secondary text-white opacity-50" disabled>Hanya Auditor</button>
+                                    <button class="btn btn-sm bg-secondary text-white opacity-50 w-100" disabled>Hanya Auditor</button>
                                 {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-                <!-- Akhir Struktur Tabel Murni -->
-
                 <div id="noDataMessage" class="text-center py-4 text-muted fw-bold" style="display: none;">
                     Tidak ada data yang cocok dengan kriteria pencarian/filter.
                 </div>
@@ -177,12 +190,8 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
     <!-- SEMUA MODAL DILETAKKAN DI LUAR TABEL HTML -->
-    <!-- ========================================== -->
     {% for item in data %}
-    
-    <!-- Modal Detail RPM -->
     <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0">
@@ -191,20 +200,16 @@
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-            
             <h6 class="fw-bold text-nusantara">Informasi Laporan:</h6>
             <p class="text-dark mb-1"><strong>No. LHA:</strong> {{ item.no_lha }}</p>
             <p class="text-dark mb-3"><strong>Jenis Audit:</strong> {{ item.jenis_audit }}</p>
-
             <h6 class="fw-bold text-nusantara">Deskripsi Tindak Lanjut:</h6>
             <p class="border border-info p-2 rounded bg-light text-dark mb-3">{{ item.deskripsi }}</p>
-            
             <h6 class="fw-bold text-nusantara mt-3">Kontak Unit Kerja (Auditee):</h6>
             <table class="table table-sm text-dark mb-3">
                 <tr><td>Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
                 <tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr>
             </table>
-
             {% if item.no_ba_kesepakatan %}
             <h6 class="fw-bold text-nusantara mt-3">Riwayat Kesepakatan Ulang (BA):</h6>
             <div class="border border-warning p-2 rounded bg-light text-dark">
@@ -214,13 +219,11 @@
                 {% endif %}
             </div>
             {% endif %}
-
             </div>
         </div>
         </div>
     </div>
 
-    <!-- Modal Usulkan Hapus RPM (Auditor) -->
     <div class="modal fade" id="modalDeleteRpm{{ item.id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 border-top border-4 border-danger">
@@ -230,31 +233,33 @@
             </div>
             <form action="/request_delete/{{ item.id }}" method="POST">
                 <div class="modal-body text-start">
-                <p class="text-dark">Anda akan mengajukan penghapusan RPM LHA: <strong>{{ item.no_lha }}</strong> ({{ item.unit_kerja }}).</p>
-                <p class="text-danger small fw-bold">Data tidak akan langsung terhapus sampai disetujui Ketua Tim Audit.</p>
-                <label class="fw-bold text-danger mt-2">Otorisasi Akun (Password Anda):</label>
-                <input type="password" class="form-control border-danger mt-1" name="password_otorisasi" required placeholder="Masukkan password Anda">
+                <p class="text-dark">Anda mengajukan penghapusan LHA: <strong>{{ item.no_lha }}</strong>.</p>
+                <p class="text-danger small fw-bold">Data tidak langsung terhapus sampai disetujui Ketua Tim Audit.</p>
+                <label class="fw-bold text-danger mt-2">Password Anda (Otorisasi):</label>
+                <input type="password" class="form-control border-danger mt-1" name="password_otorisasi" required>
                 </div>
                 <div class="modal-footer border-0">
                 <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-danger fw-bold">Kirim Usulan Hapus</button>
+                <button type="submit" class="btn btn-danger fw-bold">Kirim Usulan</button>
                 </div>
             </form>
         </div>
         </div>
     </div>
-    
     {% endfor %}
-    <!-- ========================================== -->
 
     <script>
         function applyFilters() {
+            let role = "{{ session['role'] }}";
+            let myWa = "{{ session['no_wa'] }}";
+            
             let globalSearch = document.getElementById("searchInput").value.toLowerCase();
             let f_lha = document.getElementById("f_lha").value.toLowerCase();
             let f_unit = document.getElementById("f_unit").value.toLowerCase();
             let f_sisa = document.getElementById("f_sisa").value;
             let f_status = document.getElementById("f_status").value;
             let f_ba = document.getElementById("f_ba").value;
+            let f_tj = document.getElementById("f_tanggung_jawab").value; // Filter Kepemilikan
 
             let rows = document.querySelectorAll(".filter-row");
             let visibleCount = 0;
@@ -266,6 +271,8 @@
                 let r_status = row.getAttribute("data-status");
                 let r_ba = row.getAttribute("data-ba");
                 let r_sisa = parseInt(row.getAttribute("data-sisa"));
+                let r_wa_aud = row.getAttribute("data-wa-auditor");
+                let r_wa_kt = row.getAttribute("data-wa-kt");
 
                 let matchGlobal = textData.includes(globalSearch);
                 let matchLha = r_lha.includes(f_lha);
@@ -278,7 +285,14 @@
                 else if (f_sisa === "terlewat") { matchSisa = (r_sisa < 0); } 
                 else if (f_sisa === "aman") { matchSisa = (r_sisa > 14); }
 
-                if (matchGlobal && matchLha && matchUnit && matchStatus && matchBa && matchSisa) {
+                // LOGIKA FILTER KEPEMILIKAN
+                let matchTj = true;
+                if (f_tj === "saya") {
+                    if (role === "auditor") { matchTj = (r_wa_aud === myWa); }
+                    else if (role === "ketuatim") { matchTj = (r_wa_kt === myWa); }
+                }
+
+                if (matchGlobal && matchLha && matchUnit && matchStatus && matchBa && matchSisa && matchTj) {
                     row.style.display = "";
                     visibleCount++;
                 } else {
