@@ -8,13 +8,11 @@
     <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .bg-cakrawala { background-color: #307FE2 !important; } .text-nusantara { color: #0857C3 !important; } .text-mentari { color: #71C5E8 !important; } .btn-nusantara { background-color: #0857C3; color: white; border: none; }</style>
 </head>
 <body class="bg-light">
-    <!-- Navbar (Tanpa Dropdown) -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/admin">Dashboard Super Admin</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <!-- Warna diubah dari text-warning menjadi text-mentari (Biru Muda) -->
                     <li class="nav-item"><a class="nav-link text-mentari fw-bold active" href="/admin">Kelola User</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="/admin/logs">Akses Log & History</a></li>
                 </ul>
@@ -32,7 +30,6 @@
         {% endwith %}
         
         <div class="row">
-            <!-- Form Tambah User -->
             <div class="col-md-3">
                 <div class="card shadow-sm border-0 border-start border-4 border-primary mb-4">
                     <div class="card-header bg-cakrawala text-white fw-bold">Tambah User Baru</div>
@@ -43,11 +40,10 @@
                             <div class="mb-2"><label class="fw-bold text-nusantara">No. WhatsApp</label><input type="text" class="form-control" name="no_wa" required></div>
                             <div class="mb-2"><label class="fw-bold text-nusantara">Password Awal</label><input type="password" class="form-control" name="password" required></div>
                             <div class="mb-3">
-                                <label class="fw-bold text-nusantara">Kewenangan</label>
+                                <label class="fw-bold text-nusantara">Tingkat Akses</label>
                                 <select class="form-select border-primary" name="role" required>
+                                    <option value="pegawai">User Aplikasi (Pegawai)</option>
                                     <option value="superadmin">Super Admin</option>
-                                    <option value="auditor">Auditor</option>
-                                    <option value="ketuatim">Ketua Tim Audit</option>
                                 </select>
                             </div>
                             <button type="submit" class="btn btn-nusantara w-100 fw-bold">Simpan User</button>
@@ -56,54 +52,30 @@
                 </div>
             </div>
 
-            <!-- Tabel Daftar User -->
             <div class="col-md-9">
                 <div class="card shadow-sm border-0">
-                    <div class="card-header bg-dark text-white fw-bold">Daftar User Sistem & Keamanan</div>
+                    <div class="card-header bg-dark text-white fw-bold">Daftar Akun Pengguna</div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table mb-0 align-middle table-hover">
-                                <thead><tr><th class="text-nusantara">Nama</th><th class="text-nusantara">Username</th><th class="text-nusantara">No. WA</th><th class="text-nusantara text-center">Role</th><th class="text-nusantara text-center">Aksi</th></tr></thead>
+                                <thead><tr><th class="text-nusantara">Nama</th><th class="text-nusantara">Username</th><th class="text-nusantara">No. WA</th><th class="text-nusantara text-center">Akses</th><th class="text-nusantara text-center">Aksi</th></tr></thead>
                                 <tbody>
                                     {% for u in users %}
                                     <tr>
                                         <td class="fw-bold text-nusantara">{{ u.nama_lengkap }}</td>
                                         <td>{{ u.username }}</td>
                                         <td>{{ u.no_wa }}</td>
-                                        <td class="text-center"><span class="badge {% if u.role == 'superadmin' %}bg-primary{% elif u.role == 'ketuatim' %}bg-warning text-dark{% else %}bg-secondary{% endif %} text-uppercase">{{ u.role }}</span></td>
+                                        <td class="text-center"><span class="badge {% if u.role == 'superadmin' %}bg-primary{% else %}bg-secondary{% endif %} text-uppercase">{{ u.role }}</span></td>
                                         <td class="text-center">
-                                            <button type="button" class="btn btn-sm btn-outline-primary fw-bold mb-1" data-bs-toggle="modal" data-bs-target="#modalRole{{ u.id }}">⚙️ Ubah Role</button>
-                                            
-                                            <!-- Tombol Ubah WA OLEH SUPER ADMIN -->
                                             <button type="button" class="btn btn-sm btn-outline-success fw-bold mb-1" data-bs-toggle="modal" data-bs-target="#modalEditWA{{ u.id }}">📱 Ubah WA</button>
-                                            
                                             <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold mb-1" data-bs-toggle="modal" data-bs-target="#modalReset{{ u.id }}">🔑 Reset Pass</button>
-                                            
                                             <form action="/admin/delete_user/{{ u.id }}" method="POST" class="d-inline">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger fw-bold mb-1" onclick="return confirm('Hapus permanen user {{ u.nama_lengkap }}?');">🗑️ Hapus</button>
                                             </form>
                                         </td>
                                     </tr>
 
-                                    <!-- Modal Ubah Role -->
-                                    <div class="modal fade" id="modalRole{{ u.id }}" tabindex="-1">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content"><form action="/admin/edit_user/{{ u.id }}" method="POST">
-                                                <div class="modal-header bg-primary text-white"><h5 class="modal-title fw-bold">Ubah Hak Akses</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
-                                                <div class="modal-body text-start">
-                                                    <p class="text-dark">Kewenangan untuk: <strong>{{ u.nama_lengkap }}</strong></p>
-                                                    <select class="form-select border-primary fw-bold" name="role">
-                                                        <option value="superadmin" {% if u.role == 'superadmin' %}selected{% endif %}>SUPER ADMIN</option>
-                                                        <option value="ketuatim" {% if u.role == 'ketuatim' %}selected{% endif %}>KETUA TIM AUDIT</option>
-                                                        <option value="auditor" {% if u.role == 'auditor' %}selected{% endif %}>AUDITOR</option>
-                                                    </select>
-                                                </div>
-                                                <div class="modal-footer border-0"><button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary fw-bold">Simpan</button></div>
-                                            </form></div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Modal Ubah Nomor WA (Hanya Super Admin) -->
+                                    <!-- Modal Ubah Nomor WA -->
                                     <div class="modal fade" id="modalEditWA{{ u.id }}" tabindex="-1">
                                         <div class="modal-dialog modal-dialog-centered">
                                             <div class="modal-content"><form action="/admin/edit_wa/{{ u.id }}" method="POST">
