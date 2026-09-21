@@ -30,6 +30,7 @@
         {% endwith %}
         
         <div class="row">
+            <!-- Form Tambah User -->
             <div class="col-md-3">
                 <div class="card shadow-sm border-0 border-start border-4 border-primary mb-4">
                     <div class="card-header bg-cakrawala text-white fw-bold">Tambah User Baru</div>
@@ -42,7 +43,7 @@
                             <div class="mb-3">
                                 <label class="fw-bold text-nusantara">Tingkat Akses</label>
                                 <select class="form-select border-primary" name="role" required>
-                                    <option value="pegawai">User Aplikasi (Pegawai)</option>
+                                    <option value="auditor">Auditor</option>
                                     <option value="superadmin">Super Admin</option>
                                 </select>
                             </div>
@@ -52,6 +53,7 @@
                 </div>
             </div>
 
+            <!-- Tabel Daftar User -->
             <div class="col-md-9">
                 <div class="card shadow-sm border-0">
                     <div class="card-header bg-dark text-white fw-bold">Daftar Akun Pengguna</div>
@@ -65,7 +67,14 @@
                                         <td class="fw-bold text-nusantara">{{ u.nama_lengkap }}</td>
                                         <td>{{ u.username }}</td>
                                         <td>{{ u.no_wa }}</td>
-                                        <td class="text-center"><span class="badge {% if u.role == 'superadmin' %}bg-primary{% else %}bg-secondary{% endif %} text-uppercase">{{ u.role }}</span></td>
+                                        
+                                        <!-- Logika Tampilan Badge Akses Diseragamkan -->
+                                        <td class="text-center">
+                                            <span class="badge {% if u.role == 'superadmin' %}bg-primary{% else %}bg-secondary{% endif %} text-uppercase">
+                                                {% if u.role == 'superadmin' %}SUPERADMIN{% else %}AUDITOR{% endif %}
+                                            </span>
+                                        </td>
+                                        
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-outline-success fw-bold mb-1" data-bs-toggle="modal" data-bs-target="#modalEditWA{{ u.id }}">📱 Ubah WA</button>
                                             <button type="button" class="btn btn-sm btn-outline-warning text-dark fw-bold mb-1" data-bs-toggle="modal" data-bs-target="#modalReset{{ u.id }}">🔑 Reset Pass</button>
