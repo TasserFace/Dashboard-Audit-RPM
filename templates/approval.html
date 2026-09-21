@@ -28,7 +28,7 @@
     </nav>
 
     <div class="container">
-        <h4 class="fw-bold mb-4 text-nusantara">Daftar Menunggu Persetujuan Ketua Tim</h4>
+        <h4 class="fw-bold mb-4 text-nusantara">Daftar Menunggu Persetujuan Anda</h4>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
@@ -57,20 +57,15 @@
                     <div class="col-md-5 text-end border-start">
                         <p class="small text-muted mb-2">Penanggung Jawab: <strong>{{ item.nama_ketua_tim }}</strong></p>
                         
-                        <!-- KONTROL OTORISASI BERDASARKAN NO_WA -->
-                        {% if session['no_wa'] == item.wa_ketua_tim %}
-                            <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
-                                <input type="hidden" name="action" value="tolak">
-                                <input type="hidden" name="password_otorisasi" value="tolak_sementara"> 
-                                <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
-                            </form>
-                            <button class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success bg-nusantara{% endif %} fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">
-                                {% if item.usulan_status == 'HAPUS' %}Setujui Hapus{% else %}Setujui{% endif %}
-                            </button>
-                        {% else %}
-                            <button class="btn btn-outline-secondary fw-bold me-2" disabled>Bukan Otoritas</button>
-                            <button class="btn btn-secondary fw-bold" disabled>Bukan Otoritas</button>
-                        {% endif %}
+                        <!-- TOMBOL OTORISASI AKAN SELALU AKTIF KARENA SUDAH DIFILTER DARI DATABASE -->
+                        <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
+                            <input type="hidden" name="action" value="tolak">
+                            <input type="hidden" name="password_otorisasi" value="tolak_sementara"> 
+                            <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
+                        </form>
+                        <button class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success bg-nusantara{% endif %} fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">
+                            {% if item.usulan_status == 'HAPUS' %}Setujui Hapus{% else %}Setujui{% endif %}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -93,7 +88,6 @@
         </div>
 
         <!-- MODAL OTORISASI -->
-        {% if session['no_wa'] == item.wa_ketua_tim %}
         <div class="modal fade" id="modalApprove{{ item.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 {% if item.usulan_status == 'HAPUS' %}border-top border-4 border-danger{% endif %}">
@@ -120,10 +114,9 @@
                 </div>
             </div>
         </div>
-        {% endif %}
         
         {% else %}
-        <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan.</div>
+        <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan Anda.</div>
         {% endfor %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
