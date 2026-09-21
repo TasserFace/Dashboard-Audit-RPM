@@ -42,9 +42,6 @@
                     {% endif %}
                 </ul>
                 
-                <div class="mx-auto text-white fw-bold text-uppercase px-4 py-2 bg-cakrawala border border-white rounded shadow-sm">
-                    LOGIN AS: {{ 'KETUA TIM AUDIT' if session['role'] == 'ketuatim' else 'AUDITOR' }}
-                </div>
 
                 <div class="d-flex text-white align-items-center ms-auto">
                     <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
