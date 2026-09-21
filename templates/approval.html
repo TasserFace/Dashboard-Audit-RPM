@@ -38,7 +38,14 @@
                 <div class="row align-items-center">
                     <div class="col-md-8">
                         <h5 class="fw-bold text-nusantara">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6">{{ item.jenis_audit }}</span></h5>
-                        <p class="mb-1 text-muted">Diusulkan oleh Auditor: <strong>{{ item.nama_auditor }}</strong></p>
+                        
+                        <!-- TOMBOL TAMBAHAN: LIHAT DESKRIPSI -->
+                        <p class="mb-1 text-muted d-flex align-items-center">
+                            Diusulkan oleh Auditor: <strong class="ms-1 me-3">{{ item.nama_auditor }}</strong>
+                            <button type="button" class="btn btn-sm btn-outline-info fw-bold text-dark py-0" data-bs-toggle="modal" data-bs-target="#modalDeskripsi{{ item.id }}">
+                                🔍 Lihat Deskripsi RPM
+                            </button>
+                        </p>
                         
                         <!-- DETEKSI USULAN HAPUS ATAU EDIT BIASA -->
                         {% if item.usulan_status == 'HAPUS' %}
@@ -72,7 +79,7 @@
                             <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
                         </form>
                         
-                        <!-- Tombol Pemicu Modal (Berubah Merah Jika Hapus) -->
+                        <!-- Tombol Pemicu Modal Persetujuan -->
                         {% if item.usulan_status == 'HAPUS' %}
                         <button class="btn btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui Penghapusan</button>
                         {% else %}
@@ -83,10 +90,38 @@
             </div>
         </div>
 
-        <!-- MODAL OTORISASI PERSETUJUAN (DINAMIS) -->
+        <!-- ============================================== -->
+        <!-- MODAL 1: POP-UP DETAIL & DESKRIPSI RPM         -->
+        <!-- ============================================== -->
+        <div class="modal fade" id="modalDeskripsi{{ item.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 border-top border-4 border-info">
+                    <div class="modal-header bg-info text-dark">
+                        <h5 class="modal-title fw-bold">Detail & Deskripsi Tindak Lanjut</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body text-start">
+                        <p class="mb-1"><strong>No. LHA:</strong> {{ item.no_lha }}</p>
+                        <p class="mb-3"><strong>Unit Kerja:</strong> {{ item.unit_kerja }}</p>
+                        
+                        <h6 class="fw-bold text-nusantara mt-2">Deskripsi RPM:</h6>
+                        <p class="border border-info p-3 rounded bg-light text-dark" style="white-space: pre-wrap;">{{ item.deskripsi }}</p>
+                        
+                        <hr>
+                        <p class="mb-0 small text-muted">PIC Auditee: <strong>{{ item.nama_pic }}</strong> ({{ item.wa_auditee }})</p>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- MODAL 2: OTORISASI PERSETUJUAN (PASSWORD)      -->
+        <!-- ============================================== -->
         <div class="modal fade" id="modalApprove{{ item.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <!-- Jika usulan hapus, border modal jadi merah -->
                 <div class="modal-content border-0 {% if item.usulan_status == 'HAPUS' %}border-top border-4 border-danger{% endif %}">
                     
                     <div class="modal-header {% if item.usulan_status == 'HAPUS' %}bg-danger{% else %}bg-nusantara{% endif %} text-white">
@@ -98,7 +133,6 @@
                         <div class="modal-body text-start">
                             <input type="hidden" name="action" value="terima">
                             
-                            <!-- Peringatan Khusus untuk Penghapusan -->
                             {% if item.usulan_status == 'HAPUS' %}
                             <div class="alert alert-danger bg-danger bg-opacity-10 text-danger border-danger fw-bold text-center px-2 py-3 mb-3">
                                 🛑 PERINGATAN 🛑<br>Apakah Anda yakin menyetujui PENGHAPUSAN PERMANEN pada RPM Unit Kerja {{ item.unit_kerja }}? Data ini tidak dapat dikembalikan.
@@ -120,6 +154,7 @@
                 </div>
             </div>
         </div>
+        
         {% else %}
         <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan.</div>
         {% endfor %}
