@@ -19,7 +19,7 @@
     </style>
 </head>
 <body class="bg-light">
-    <!-- Navbar (Dukungan Multi-Role / Hybrid) -->
+    <!-- Navbar (Akses Hybrid: Input & Approval Muncul Bersamaan) -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
@@ -28,11 +28,10 @@
                     <li class="nav-item"><a class="nav-link text-white" href="/">Ringkasan</a></li>
                     <li class="nav-item"><a class="nav-link active text-mentari fw-bold" href="/monitoring">Monitoring RPM</a></li>
                     
-                    {% if session['role'] == 'auditor' or session['role'] == 'hybrid' %}
+                    <!-- Menu Tambah RPM selalu aktif untuk semua user pelaksana -->
                     <li class="nav-item"><a class="nav-link text-white" href="/input">Tambah RPM</a></li>
-                    {% endif %}
 
-                    {% if session['role'] == 'ketuatim' or session['role'] == 'hybrid' %}
+                    <!-- Menu Approval selalu aktif untuk mengakomodasi peran ganda Ketua Tim -->
                     <li class="nav-item">
                         <a class="nav-link text-white d-flex align-items-center" href="/approval">
                             Menu Approval 
@@ -43,7 +42,6 @@
                             {% endif %}
                         </a>
                     </li>
-                    {% endif %}
                 </ul>
                 <div class="mx-auto text-white fw-bold text-uppercase px-4 py-2 bg-cakrawala border border-white rounded shadow-sm">
                     LOGIN AS: {{ session['role'] | upper }}
@@ -85,7 +83,6 @@
                         <input type="text" id="f_unit" class="form-control form-control-sm border-primary filter-input" placeholder="Ketik Unit Kerja...">
                     </div>
                     
-                    <!-- FILTER TANGGUNG JAWAB -->
                     <div class="col-md-2">
                         <label class="form-label text-primary fw-bold small">Kepemilikan</label>
                         <select id="f_tanggung_jawab" class="form-select form-select-sm border-primary filter-input bg-info bg-opacity-10">
@@ -163,18 +160,14 @@
                             </td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.nama_auditor }}</td>
                             
-                            <!-- KONTROL AKSES TOMBOL AKSI BERDASARKAN NOMOR WA -->
+                            <!-- KONTROL AKSI BERDASARKAN NOMOR WA -->
                             <td class="text-center">
-                                {% if session['role'] == 'auditor' or session['role'] == 'hybrid' %}
-                                    {% if session['no_wa'] == item.wa_auditor %}
-                                        <a href="/edit/{{ item.id }}" class="btn btn-sm bg-secondary fw-bold text-white d-block mb-1">Tindak Lanjut</a>
-                                        <button class="btn btn-sm btn-danger fw-bold text-white d-block w-100" data-bs-toggle="modal" data-bs-target="#modalDeleteRpm{{ item.id }}">Hapus RPM</button>
-                                    {% else %}
-                                        <button class="btn btn-sm bg-secondary text-white opacity-50 d-block mb-1 w-100" disabled>Bukan Otoritas</button>
-                                        <button class="btn btn-sm btn-danger text-white opacity-50 d-block w-100" disabled>Bukan Otoritas</button>
-                                    {% endif %}
+                                {% if session['no_wa'] == item.wa_auditor %}
+                                    <a href="/edit/{{ item.id }}" class="btn btn-sm bg-secondary fw-bold text-white d-block mb-1">Tindak Lanjut</a>
+                                    <button class="btn btn-sm btn-danger fw-bold text-white d-block w-100" data-bs-toggle="modal" data-bs-target="#modalDeleteRpm{{ item.id }}">Hapus RPM</button>
                                 {% else %}
-                                    <span class="small text-muted italic">Monitor Saja</span>
+                                    <button class="btn btn-sm bg-secondary text-white opacity-50 d-block mb-1 w-100" disabled>Bukan Otoritas</button>
+                                    <button class="btn btn-sm btn-danger text-white opacity-50 d-block w-100" disabled>Bukan Otoritas</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -188,7 +181,7 @@
         </div>
     </div>
 
-    <!-- MODAL DETAIL & HAPUS -->
+    <!-- MODAL DETAIL -->
     {% for item in data %}
     <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
