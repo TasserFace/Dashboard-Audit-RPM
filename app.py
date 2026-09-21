@@ -54,7 +54,7 @@ class User(db.Model):
     nama_lengkap = db.Column(db.String(100))
     password = db.Column(db.String(255))
     no_wa = db.Column(db.String(20))
-    role = db.Column(db.String(20))
+    role = db.Column(db.String(20)) # Kini hanya dipakai untuk bedakan 'pegawai' vs 'superadmin'
 
 class DataRPM(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -98,10 +98,10 @@ def catat_log(aktivitas):
         db.session.add(log)
         db.session.commit()
 
-# --- NOTIFIKASI PENDING BERDASARKAN NOMOR WA YANG LOGIN ---
+# --- NOTIFIKASI PENDING ---
 @app.context_processor
 def inject_pending_count():
-    if session.get('logged_in'):
+    if session.get('logged_in') and session.get('role') != 'superadmin':
         count = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=session.get('no_wa')).count()
         return dict(pending_count=count)
     return dict(pending_count=0)
@@ -115,16 +115,15 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def role_required(role):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if session.get('role') != role:
-                flash("Anda tidak memiliki akses ke halaman tersebut!", "danger")
-                return redirect('/')
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+# Hanya dipakai khusus untuk Super Admin
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if session.get('role') != 'superadmin':
+            flash("Anda bukan Super Admin!", "danger")
+            return redirect('/')
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -173,9 +172,10 @@ def forgot_password():
             flash("Username (PN) tidak ditemukan dalam sistem.", "danger")
     return render_template('forgot_password.html')
 
+# --- ROUTES SUPER ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
-@role_required('superadmin')
+@admin_required
 def admin_dashboard():
     if request.method == 'POST':
         no_wa_baru = request.form['no_wa']
@@ -190,6 +190,7 @@ def admin_dashboard():
             return redirect('/admin')
         try:
             hashed_pw = generate_password_hash(request.form['password'])
+            # User baru akan disimpan sebagai 'pegawai' kecuali dipilih Super Admin
             baru = User(username=username_baru, nama_lengkap=request.form['nama_lengkap'], password=hashed_pw, no_wa=no_wa_baru, role=request.form['role'])
             db.session.add(baru)
             db.session.commit()
@@ -204,14 +205,14 @@ def admin_dashboard():
 
 @app.route('/admin/logs')
 @login_required
-@role_required('superadmin')
+@admin_required
 def admin_logs():
     logs = ActivityLog.query.order_by(ActivityLog.waktu.desc()).limit(500).all()
     return render_template('logs.html', logs=logs)
 
 @app.route('/admin/reset_password/<int:id>', methods=['POST'])
 @login_required
-@role_required('superadmin')
+@admin_required
 def admin_reset_password(id):
     user = User.query.get_or_404(id)
     user.password = generate_password_hash(request.form['new_password'])
@@ -222,7 +223,7 @@ def admin_reset_password(id):
 
 @app.route('/admin/delete_user/<int:id>', methods=['POST'])
 @login_required
-@role_required('superadmin')
+@admin_required
 def admin_delete_user(id):
     user = User.query.get_or_404(id)
     if user.username == session['username']:
@@ -234,19 +235,9 @@ def admin_delete_user(id):
     flash(f"User {user.nama_lengkap} berhasil dihapus.", "success")
     return redirect('/admin')
 
-@app.route('/admin/edit_user/<int:id>', methods=['POST'])
-@login_required
-@role_required('superadmin')
-def admin_edit_user(id):
-    user = User.query.get_or_404(id)
-    user.role = request.form['role']
-    db.session.commit()
-    flash(f"Kewenangan {user.nama_lengkap} diubah.", "success")
-    return redirect('/admin')
-
 @app.route('/admin/edit_wa/<int:id>', methods=['POST'])
 @login_required
-@role_required('superadmin')
+@admin_required
 def admin_edit_wa(id):
     user = User.query.get_or_404(id)
     user.no_wa = request.form['new_wa']
@@ -254,6 +245,7 @@ def admin_edit_wa(id):
     flash("Nomor WhatsApp diperbarui!", "success")
     return redirect('/admin')
 
+# --- ROUTES PEGAWAI (SEMUA BISA MENGAKSES) ---
 @app.route('/')
 @login_required
 def dashboard_summary():
@@ -281,13 +273,19 @@ def monitoring():
 def input_data():
     if session.get('role') == 'superadmin': return redirect('/admin')
     if request.method == 'POST':
-        # Validasi opsional: Jika ingin mencegah seseorang memasukkan namanya sendiri sebagai auditor jika dilarang, bisa diatur di sini.
+        wa_ketua_input = request.form['wa_ketua_tim'].strip()
+        
+        # VALIDASI KUNCI: Tidak boleh menunjuk diri sendiri sebagai Ketua Tim
+        if wa_ketua_input == session.get('no_wa'):
+            flash("PENOLAKAN SISTEM: Anda tidak dapat mendelegasikan persetujuan (approval) kepada diri sendiri! Harap tunjuk rekan kerja atau atasan lain.", "danger")
+            return redirect('/input')
+
         tgl_obj = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
         baru = DataRPM(
             no_lha=request.form['no_lha'], jenis_audit=request.form['jenis_audit'], unit_kerja=request.form['unit_kerja'], deskripsi=request.form['deskripsi'],
             tenggat_waktu=tgl_obj, nama_pic=request.form['nama_pic'], wa_auditee=request.form['wa_auditee'],
             nama_auditor=request.form['nama_auditor'], wa_auditor=request.form['wa_auditor'],
-            nama_ketua_tim=request.form['nama_ketua_tim'], wa_ketua_tim=request.form['wa_ketua_tim']
+            nama_ketua_tim=request.form['nama_ketua_tim'], wa_ketua_tim=wa_ketua_input
         )
         db.session.add(baru)
         db.session.commit()
@@ -299,7 +297,9 @@ def input_data():
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
 def edit_data(id):
+    if session.get('role') == 'superadmin': return redirect('/admin')
     rpm = DataRPM.query.get_or_404(id)
+    
     if rpm.wa_auditor != session.get('no_wa'):
         flash("AKSES DITOLAK: Anda bukan Auditor yang bertanggung jawab atas RPM ini!", "danger")
         return redirect('/monitoring')
@@ -361,7 +361,6 @@ def request_delete(id):
     flash("Usulan penghapusan dikirim ke Ketua Tim.", "warning")
     return redirect('/monitoring')
 
-# --- SEMUA USER BISA MEMBUKA HALAMAN APPROVAL (TRANSPARANSI) ---
 @app.route('/approval', methods=['GET'])
 @login_required
 def approval_dashboard():
@@ -374,7 +373,6 @@ def approval_dashboard():
 def process_approval(id):
     rpm = DataRPM.query.get_or_404(id)
     
-    # KUNCI UTAMA: Hanya Ketua Tim yang nomor WA-nya cocok dengan data tersebut yang boleh mengeksekusi
     if rpm.wa_ketua_tim != session.get('no_wa'):
         flash("AKSES DITOLAK: Keputusan ini hanya boleh diambil oleh Ketua Tim Penanggung Jawab!", "danger")
         return redirect('/approval')
