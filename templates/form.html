@@ -8,6 +8,7 @@
     <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; }</style>
 </head>
 <body class="bg-light">
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
@@ -16,6 +17,7 @@
                     <li class="nav-item"><a class="nav-link text-white" href="/">Ringkasan</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="/monitoring">Monitoring RPM</a></li>
                     <li class="nav-item"><a class="nav-link active text-warning fw-bold" href="/input">Tambah RPM</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/approval">Menu Approval</a></li>
                 </ul>
                 <div class="d-flex text-white align-items-center ms-auto">
                     <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
@@ -24,28 +26,45 @@
             </div>
         </div>
     </nav>
+
     <div class="container" style="max-width: 700px;">
         <h4 class="fw-bold mb-3 text-nusantara">Formulir Tambah RPM Baru</h4>
-        <div class="card shadow-sm border-0">
+        <div class="card shadow-sm border-0 mb-5">
             <div class="card-body">
                 <form action="/input" method="POST">
-                    <div class="mb-3"><label class="fw-bold">No. LHA</label><input type="text" class="form-control" name="no_lha" required></div>
-                    <div class="mb-3"><label class="fw-bold">Jenis Audit</label><input type="text" class="form-control" name="jenis_audit" required></div>
-                    <div class="mb-3"><label class="fw-bold">Unit Kerja</label><input type="text" class="form-control" name="unit_kerja" required></div>
-                    <div class="mb-3"><label class="fw-bold">Deskripsi Temuan</label><textarea class="form-control" name="deskripsi" rows="3" required></textarea></div>
+                    <div class="mb-3"><label class="fw-bold">No. LHA</label><input type="text" class="form-control" name="no_lha" required placeholder="Contoh: LHA/IA/2026/001"></div>
+                    
+                    <!-- DROPDOWN JENIS AUDIT -->
+                    <div class="mb-3">
+                        <label class="fw-bold">Jenis Audit</label>
+                        <select class="form-select border-primary" name="jenis_audit" required>
+                            <option value="" disabled selected>-- Pilih Jenis Audit --</option>
+                            <option value="Reguler Audit">Reguler Audit</option>
+                            <option value="Spesial Audit">Spesial Audit</option>
+                            <option value="Tematik Audit">Tematik Audit</option>
+                            <option value="Audit Investigasi">Audit Investigasi</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3"><label class="fw-bold">Unit Kerja</label><input type="text" class="form-control" name="unit_kerja" required placeholder="Contoh: BO Jakarta"></div>
+                    <div class="mb-3"><label class="fw-bold">Deskripsi Temuan</label><textarea class="form-control" name="deskripsi" rows="3" required placeholder="Uraikan temuan audit dan rekomendasi perbaikan..."></textarea></div>
                     <div class="mb-3"><label class="fw-bold">Tenggat Waktu</label><input type="date" class="form-control" name="tenggat_waktu" required></div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-3"><label class="fw-bold">Nama PIC Auditee</label><input type="text" class="form-control" name="nama_pic" required></div>
-                        <div class="col-md-6 mb-3"><label class="fw-bold">No WA PIC</label><input type="text" class="form-control" name="wa_auditee" required></div>
+                        <div class="col-md-6 mb-3"><label class="fw-bold">No WA PIC</label><input type="text" class="form-control" name="wa_auditee" required placeholder="08xxxxxxxxxx"></div>
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-3"><label class="fw-bold">Nama Auditor</label><input type="text" class="form-control" name="nama_auditor" required></div>
-                        <div class="col-md-6 mb-3"><label class="fw-bold">No WA Auditor</label><input type="text" class="form-control" name="wa_auditor" required></div>
+                        <div class="col-md-6 mb-3"><label class="fw-bold">No WA Auditor</label><input type="text" class="form-control" name="wa_auditor" required placeholder="08xxxxxxxxxx"></div>
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-3"><label class="fw-bold">Nama Ketua Tim</label><input type="text" class="form-control" name="nama_ketua_tim" required></div>
-                        <div class="col-md-6 mb-3"><label class="fw-bold">No WA Ketua Tim</label><input type="text" class="form-control" name="wa_ketua_tim" required></div>
+                        <div class="col-md-6 mb-3"><label class="fw-bold">No WA Ketua Tim</label><input type="text" class="form-control" name="wa_ketua_tim" required placeholder="08xxxxxxxxxx"></div>
                     </div>
+                    
                     <button type="submit" class="btn btn-primary bg-nusantara w-100 fw-bold">Simpan Data RPM</button>
                 </form>
             </div>
