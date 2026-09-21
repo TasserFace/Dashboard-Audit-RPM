@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, flash, session, send_from_directory
+from flask import Flask, render_template, request, redirect, flash, session, url_for, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -26,12 +26,20 @@ def send_wa_fonnte(target, message):
     except Exception as e:
         print(f"Gagal mengirim pesan WA via Fonnte: {e}")
 
-# --- KONFIGURASI DATABASE & UPLOAD STANDARD (TANPA BRANKAS VOLUME) ---
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v8.db'
+# --- KONFIGURASI PENYIMPANAN PERMANEN (BRANKAS / VOLUME) ---
+# Jika aplikasi berjalan di Railway (mendeteksi folder /app/data), gunakan folder tersebut.
+# Jika berjalan di laptop Anda, gunakan folder aplikasi biasa.
+if os.path.exists('/app/data'):
+    BASE_DIR = '/app/data'
+else:
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Database dan file upload sekarang disimpan secara dinamis di BASE_DIR
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(BASE_DIR, 'db_audit_v8.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__name__)), 'uploads')
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg'}
@@ -213,7 +221,6 @@ def dashboard_summary():
     hari_ini = date.today()
     data_rpm = DataRPM.query.all()
     
-    # Hitung Statistik
     total = len(data_rpm)
     selesai = sum(1 for item in data_rpm if item.status == 'Memadai')
     kritis = sum(1 for item in data_rpm if item.status != 'Memadai' and (item.tenggat_waktu - hari_ini).days <= 14)
@@ -250,7 +257,7 @@ def input_data():
         db.session.add(baru)
         db.session.commit()
         flash("Data RPM berhasil ditambahkan!", "success")
-        return redirect('/monitoring') # Arahkan ke tabel setelah input
+        return redirect('/monitoring')
     return render_template('form.html')
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
