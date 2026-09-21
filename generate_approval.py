@@ -5,14 +5,14 @@ import random
 # Variasi data untuk diacak
 unit_kerja_list = ["BO Jakarta", "BO Bandung", "BO Surabaya", "BO Medan", "Kanwil Semarang", "BO Makassar"]
 jenis_audit_list = ["Reguler Audit", "Spesial Audit", "Tematik Audit"]
-auditor_list = ["Rayhan", "Budi", "Siti", "Andi"]
+auditor_list = ["Rayhan", "Budi", "Siti", "Andi", "Ratna", "Dimas"]
 
 with app.app_context():
-    print("Memulai proses pembuatan 20 data dummy KHUSUS APPROVAL...")
+    print("Memulai proses pembuatan 20 data dummy KHUSUS APPROVAL dengan variasi Tenggat Waktu...")
     
-    # Kita mulai dari 51 agar nomor LHA tidak bentrok dengan 50 data sebelumnya
-    for i in range(51, 71): 
-        # Acak sisa hari awal
+    # Kita mulai dari 71 agar tidak bentrok dengan data sebelumnya
+    for i in range(71, 91): 
+        # Acak sisa hari awal (hari ini)
         sisa_hari_awal = random.randint(-10, 15)
         tenggat_awal = date.today() + timedelta(days=sisa_hari_awal)
         
@@ -30,34 +30,43 @@ with app.app_context():
             nama_ketua_tim="Administrator",
             wa_ketua_tim="081200000000", 
             status="Dalam Pemantauan",
-            # KUNCI UTAMA: Langsung set statusnya menjadi Menunggu Approval
-            status_approval="Menunggu Approval" 
+            status_approval="Menunggu Approval" # KUNCI: Masuk ke tabel Approval
         )
         
-        # 2. TENTUKAN SKENARIO SECARA ACAK
-        skenario = random.choice(["hapus", "status_saja", "tenggat_saja", "kombinasi"])
+        # 2. TENTUKAN 5 SKENARIO SECARA ACAK
+        skenario = random.choice(["hapus", "status_saja", "tenggat_pendek", "tenggat_panjang", "kombinasi"])
         
-        # SKENARIO A: Usulan Hapus Data (Muncul Peringatan Merah)
+        # Skenario 1: Hapus
         if skenario == "hapus":
             dummy_rpm.usulan_status = "HAPUS"
+            # usulan_tenggat dibiarkan kosong (None)
             
-        # SKENARIO B: Usulan Perubahan Status Saja (Menyertakan File Bukti)
+        # Skenario 2: Status Saja
         elif skenario == "status_saja":
             dummy_rpm.usulan_status = random.choice(["Memadai", "Belum Memadai"])
-            dummy_rpm.file_bukti = f"Dummy_File_Bukti_{i}.pdf"
+            dummy_rpm.file_bukti = f"Dummy_Bukti_Status_{i}.pdf"
+            # usulan_tenggat dibiarkan kosong (None)
             
-        # SKENARIO C: Usulan Perpanjangan Tenggat Waktu (Menyertakan BA)
-        elif skenario == "tenggat_saja":
-            dummy_rpm.usulan_status = "Dalam Pemantauan" # Status tetap
-            dummy_rpm.usulan_tenggat = tenggat_awal + timedelta(days=random.randint(14, 30)) # Diperpanjang 14-30 hari
-            dummy_rpm.no_ba_kesepakatan = f"BA/EXT/{i:03d}/2026"
+        # Skenario 3: Perpanjangan Pendek (7 Hari)
+        elif skenario == "tenggat_pendek":
+            dummy_rpm.usulan_status = dummy_rpm.status # Status tetap
+            dummy_rpm.usulan_tenggat = tenggat_awal + timedelta(days=7) 
+            dummy_rpm.no_ba_kesepakatan = f"BA/EXT-1W/{i:03d}/2026"
             dummy_rpm.tgl_ba_kesepakatan = date.today()
-            dummy_rpm.file_ba_kesepakatan = f"Dummy_Berita_Acara_{i}.pdf"
+            dummy_rpm.file_ba_kesepakatan = f"BA_Perpanjangan_Pendek_{i}.pdf"
             
-        # SKENARIO D: Kombinasi (Status Berubah & Tenggat Diperpanjang)
+        # Skenario 4: Perpanjangan Panjang (90 Hari)
+        elif skenario == "tenggat_panjang":
+            dummy_rpm.usulan_status = dummy_rpm.status # Status tetap
+            dummy_rpm.usulan_tenggat = tenggat_awal + timedelta(days=90) 
+            dummy_rpm.no_ba_kesepakatan = f"BA/EXT-3M/{i:03d}/2026"
+            dummy_rpm.tgl_ba_kesepakatan = date.today()
+            dummy_rpm.file_ba_kesepakatan = f"BA_Perpanjangan_Panjang_{i}.pdf"
+            
+        # Skenario 5: Kombinasi
         elif skenario == "kombinasi":
-            dummy_rpm.usulan_status = random.choice(["Memadai", "Belum Memadai"])
-            dummy_rpm.file_bukti = f"Dummy_File_Bukti_{i}.pdf"
+            dummy_rpm.usulan_status = "Belum Memadai"
+            dummy_rpm.file_bukti = f"Dummy_Bukti_{i}.pdf"
             dummy_rpm.usulan_tenggat = tenggat_awal + timedelta(days=random.randint(14, 30))
             dummy_rpm.no_ba_kesepakatan = f"BA/KMB/{i:03d}/2026"
             dummy_rpm.tgl_ba_kesepakatan = date.today()
@@ -65,6 +74,6 @@ with app.app_context():
             
         db.session.add(dummy_rpm)
     
-    # Simpan semua ke database
+    # Simpan ke database
     db.session.commit()
-    print("✅ SUKSES! 20 Data Dummy KHUSUS APPROVAL (berbagai skenario) berhasil disuntikkan.")
+    print("✅ SUKSES! 20 Data Dummy KHUSUS APPROVAL dengan berbagai skenario waktu berhasil disuntikkan.")
