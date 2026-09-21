@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, flash, session, url_for, send_from_directory
+from flask import Flask, render_template, request, redirect, flash, session, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,12 +7,26 @@ from sqlalchemy.exc import IntegrityError
 import os
 import random
 import string
+import requests
 from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
 
-# --- KONFIGURASI DATABASE & UPLOAD STANDARD (TANPA BRANKAS) ---
+# --- KONFIGURASI API FONNTE ---
+FONNTE_TOKEN = "MASUKKAN_TOKEN_API_FONNTE_ANDA_DISINI"
+
+def send_wa_fonnte(target, message):
+    url = "https://api.fonnte.com/send"
+    headers = {"Authorization": FONNTE_TOKEN}
+    data = {"target": target, "message": message}
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        print(f"Status Fonnte: {response.text}")
+    except Exception as e:
+        print(f"Gagal mengirim pesan WA via Fonnte: {e}")
+
+# --- KONFIGURASI DATABASE & UPLOAD STANDARD (TANPA BRANKAS VOLUME) ---
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db_audit_v8.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=15)
@@ -120,7 +134,8 @@ def forgot_password():
                 new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
                 user.password = generate_password_hash(new_password)
                 db.session.commit()
-                print(f"-> MENGIRIM WA KE {user.no_wa}: Password baru SIMA Anda adalah: {new_password}")
+                pesan_wa = f"Halo *{user.nama_lengkap}*,\n\nBerikut adalah password baru untuk akun SIMA RPM Anda:\n\n🔑 *{new_password}*\n\nSilakan login kembali dan jaga kerahasiaan password ini."
+                send_wa_fonnte(user.no_wa, pesan_wa)
                 flash(f"Password baru telah berhasil dikirim ke WhatsApp Anda yang terdaftar ({user.no_wa[:4]}xxx).", "success")
                 return redirect('/login')
         else:
@@ -157,8 +172,7 @@ def admin_dashboard():
 @role_required('superadmin')
 def admin_reset_password(id):
     user = User.query.get_or_404(id)
-    new_pw = request.form['new_password']
-    user.password = generate_password_hash(new_pw)
+    user.password = generate_password_hash(request.form['new_password'])
     db.session.commit()
     flash(f"Password untuk user {user.nama_lengkap} berhasil di-reset!", "success")
     return redirect('/admin')
@@ -190,17 +204,37 @@ def admin_edit_user(id):
     flash(f"Kewenangan user {user.nama_lengkap} berhasil diubah menjadi {new_role.upper()}.", "success")
     return redirect('/admin')
 
-# --- ROUTES APLIKASI (AUDITOR & KETUA TIM) ---
+# --- ROUTE 1: HALAMAN UTAMA (RINGKASAN EKSEKUTIF) ---
 @app.route('/')
 @login_required
-def dashboard():
+def dashboard_summary():
     if session.get('role') == 'superadmin': return redirect('/admin')
+    
+    hari_ini = date.today()
+    data_rpm = DataRPM.query.all()
+    
+    # Hitung Statistik
+    total = len(data_rpm)
+    selesai = sum(1 for item in data_rpm if item.status == 'Memadai')
+    kritis = sum(1 for item in data_rpm if item.status != 'Memadai' and (item.tenggat_waktu - hari_ini).days <= 14)
+    proses = sum(1 for item in data_rpm if item.status != 'Memadai' and (item.tenggat_waktu - hari_ini).days > 14)
+    
+    return render_template('dashboard_summary.html', total=total, selesai=selesai, kritis=kritis, proses=proses)
+
+# --- ROUTE 2: HALAMAN MONITORING (TABEL DAFTAR RPM) ---
+@app.route('/monitoring')
+@login_required
+def monitoring():
+    if session.get('role') == 'superadmin': return redirect('/admin')
+    
     hari_ini = date.today()
     data_rpm = DataRPM.query.all()
     for item in data_rpm: item.sisa_hari = (item.tenggat_waktu - hari_ini).days
     data_rpm_sorted = sorted(data_rpm, key=lambda x: (1 if x.status == 'Memadai' else 0, x.sisa_hari))
+    
     return render_template('index.html', data=data_rpm_sorted)
 
+# --- ROUTES APLIKASI LAINNYA ---
 @app.route('/input', methods=['GET', 'POST'])
 @login_required
 @role_required('auditor')
@@ -216,7 +250,7 @@ def input_data():
         db.session.add(baru)
         db.session.commit()
         flash("Data RPM berhasil ditambahkan!", "success")
-        return redirect('/')
+        return redirect('/monitoring') # Arahkan ke tabel setelah input
     return render_template('form.html')
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
@@ -254,8 +288,12 @@ def edit_data(id):
             
         rpm.status_approval = 'Menunggu Approval'
         db.session.commit()
-        flash("Usulan dikirim ke Ketua Tim Audit!", "success")
-        return redirect('/')
+        
+        pesan_kt = f"🔔 *Notifikasi SIMA RPM*\n\nTerdapat usulan perubahan status RPM untuk Unit Kerja *{rpm.unit_kerja}* dari Auditor *{rpm.nama_auditor}* yang memerlukan persetujuan Anda.\n\nSilakan cek Menu Approval di Dashboard."
+        send_wa_fonnte(rpm.wa_ketua_tim, pesan_kt)
+        
+        flash("Usulan dikirim ke Ketua Tim Audit dan notifikasi WA telah diteruskan!", "success")
+        return redirect('/monitoring')
     return render_template('edit.html', item=rpm)
 
 @app.route('/approval', methods=['GET'])
@@ -279,9 +317,15 @@ def process_approval(id):
     if request.form['action'] == 'terima':
         rpm.status = rpm.usulan_status
         if rpm.usulan_tenggat: rpm.tenggat_waktu = rpm.usulan_tenggat
-        flash("Usulan disetujui! Notifikasi WA telah dikirim.", "success")
+        
+        pesan_approval = f"✅ *Notifikasi SIMA RPM*\n\nUsulan tindak lanjut RPM untuk Unit Kerja *{rpm.unit_kerja}* telah *DISETUJUI* oleh Ketua Tim.\n\nStatus saat ini: *{rpm.status}*"
+        send_wa_fonnte(rpm.wa_auditor, pesan_approval) 
+        send_wa_fonnte(rpm.wa_auditee, pesan_approval) 
+        flash("Usulan disetujui! Notifikasi WA otomatis telah dikirim ke Auditor dan Auditee.", "success")
     else:
-        flash("Usulan perubahan ditolak.", "warning")
+        pesan_tolak = f"❌ *Notifikasi SIMA RPM*\n\nUsulan tindak lanjut RPM untuk Unit Kerja *{rpm.unit_kerja}* telah *DITOLAK* oleh Ketua Tim.\nSilakan lakukan revisi."
+        send_wa_fonnte(rpm.wa_auditor, pesan_tolak)
+        flash("Usulan perubahan ditolak dan notifikasi WA telah dikirim ke Auditor.", "warning")
         
     rpm.status_approval = None
     rpm.usulan_status = None
