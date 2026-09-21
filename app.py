@@ -98,10 +98,10 @@ def catat_log(aktivitas):
         db.session.add(log)
         db.session.commit()
 
+# --- NOTIFIKASI PENDING BERDASARKAN NOMOR WA YANG LOGIN ---
 @app.context_processor
 def inject_pending_count():
-    if session.get('role') == 'ketuatim':
-        # Angka lonceng hanya menghitung yang menjadi tanggung jawabnya sendiri
+    if session.get('logged_in'):
         count = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=session.get('no_wa')).count()
         return dict(pending_count=count)
     return dict(pending_count=0)
@@ -136,7 +136,6 @@ def login():
             session['username'] = user.username
             session['nama_lengkap'] = user.nama_lengkap
             session['role'] = user.role
-            # SIMPAN NOMOR WA KE DALAM SESI LOGIN UNTUK CROSSCHECK
             session['no_wa'] = user.no_wa 
             catat_log("Login ke dalam sistem")
             return redirect('/admin') if user.role == 'superadmin' else redirect('/')
@@ -162,13 +161,13 @@ def forgot_password():
                 new_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
                 user.password = generate_password_hash(new_password)
                 db.session.commit()
-                pesan_wa = f"Halo *{user.nama_lengkap}*,\n\nBerikut adalah password baru untuk akun SIMA RPM Anda:\n\n🔑 *{new_password}*\n\nSilakan login kembali dan jaga kerahasiaan password ini."
+                pesan_wa = f"Halo *{user.nama_lengkap}*,\n\nBerikut adalah password baru untuk akun SIMA RPM Anda:\n\n🔑 *{new_password}*"
                 send_wa_fonnte(user.no_wa, pesan_wa)
                 bersihkan_log_lama()
                 log = ActivityLog(username=user.username, nama_lengkap=user.nama_lengkap, role=user.role, aktivitas="Melakukan Request Lupa Password via WA")
                 db.session.add(log)
                 db.session.commit()
-                flash(f"Password baru telah berhasil dikirim ke WhatsApp Anda.", "success")
+                flash("Password baru telah berhasil dikirim ke WhatsApp Anda.", "success")
                 return redirect('/login')
         else:
             flash("Username (PN) tidak ditemukan dalam sistem.", "danger")
@@ -183,22 +182,22 @@ def admin_dashboard():
         username_baru = request.form['username']
         cek_username = User.query.filter_by(username=username_baru).first()
         if cek_username:
-            flash(f"GAGAL: Username (PN) '{username_baru}' sudah terdaftar di sistem!", "danger")
+            flash(f"GAGAL: Username '{username_baru}' sudah terdaftar!", "danger")
             return redirect('/admin')
         cek_wa = User.query.filter_by(no_wa=no_wa_baru).first()
         if cek_wa:
-            flash(f"GAGAL: Nomor WhatsApp {no_wa_baru} sudah digunakan oleh akun '{cek_wa.nama_lengkap}'!", "danger")
+            flash(f"GAGAL: Nomor WhatsApp {no_wa_baru} sudah digunakan!", "danger")
             return redirect('/admin')
         try:
             hashed_pw = generate_password_hash(request.form['password'])
             baru = User(username=username_baru, nama_lengkap=request.form['nama_lengkap'], password=hashed_pw, no_wa=no_wa_baru, role=request.form['role'])
             db.session.add(baru)
             db.session.commit()
-            catat_log(f"Menambahkan user baru: {baru.nama_lengkap} ({baru.role})")
+            catat_log(f"Menambahkan user baru: {baru.nama_lengkap}")
             flash(f"User {baru.nama_lengkap} berhasil ditambahkan!", "success")
         except IntegrityError:
             db.session.rollback()
-            flash("GAGAL: Terjadi kesalahan pada integritas database!", "danger")
+            flash("GAGAL: Kesalahan database!", "danger")
         return redirect('/admin')
     users = User.query.all()
     return render_template('admin.html', users=users)
@@ -218,7 +217,7 @@ def admin_reset_password(id):
     user.password = generate_password_hash(request.form['new_password'])
     db.session.commit()
     catat_log(f"Mereset password user: {user.nama_lengkap}")
-    flash(f"Password untuk user {user.nama_lengkap} berhasil di-reset!", "success")
+    flash(f"Password {user.nama_lengkap} berhasil di-reset!", "success")
     return redirect('/admin')
 
 @app.route('/admin/delete_user/<int:id>', methods=['POST'])
@@ -227,9 +226,9 @@ def admin_reset_password(id):
 def admin_delete_user(id):
     user = User.query.get_or_404(id)
     if user.username == session['username']:
-        flash("GAGAL: Anda tidak bisa menghapus akun Anda sendiri!", "danger")
+        flash("GAGAL: Anda tidak bisa menghapus akun sendiri!", "danger")
         return redirect('/admin')
-    catat_log(f"Menghapus permanen user: {user.nama_lengkap}")
+    catat_log(f"Menghapus user: {user.nama_lengkap}")
     db.session.delete(user)
     db.session.commit()
     flash(f"User {user.nama_lengkap} berhasil dihapus.", "success")
@@ -240,14 +239,9 @@ def admin_delete_user(id):
 @role_required('superadmin')
 def admin_edit_user(id):
     user = User.query.get_or_404(id)
-    new_role = request.form['role']
-    if user.username == session['username'] and new_role != 'superadmin':
-        flash("GAGAL: Anda tidak bisa menurunkan hak akses Super Admin Anda sendiri!", "danger")
-        return redirect('/admin')
-    catat_log(f"Mengubah hak akses {user.nama_lengkap} menjadi {new_role}")
-    user.role = new_role
+    user.role = request.form['role']
     db.session.commit()
-    flash(f"Kewenangan user {user.nama_lengkap} berhasil diubah.", "success")
+    flash(f"Kewenangan {user.nama_lengkap} diubah.", "success")
     return redirect('/admin')
 
 @app.route('/admin/edit_wa/<int:id>', methods=['POST'])
@@ -255,16 +249,9 @@ def admin_edit_user(id):
 @role_required('superadmin')
 def admin_edit_wa(id):
     user = User.query.get_or_404(id)
-    new_wa = request.form['new_wa']
-    cek_wa = User.query.filter(User.no_wa == new_wa, User.id != id).first()
-    if cek_wa:
-        flash(f"GAGAL: Nomor WhatsApp {new_wa} sudah dipakai oleh user '{cek_wa.nama_lengkap}'!", "danger")
-        return redirect('/admin')
-    old_wa = user.no_wa
-    user.no_wa = new_wa
+    user.no_wa = request.form['new_wa']
     db.session.commit()
-    catat_log(f"Super Admin mengubah No WA {user.nama_lengkap} dari {old_wa} menjadi {new_wa}")
-    flash(f"Nomor WhatsApp untuk {user.nama_lengkap} berhasil diperbarui!", "success")
+    flash("Nomor WhatsApp diperbarui!", "success")
     return redirect('/admin')
 
 @app.route('/')
@@ -291,9 +278,10 @@ def monitoring():
 
 @app.route('/input', methods=['GET', 'POST'])
 @login_required
-@role_required('auditor')
 def input_data():
+    if session.get('role') == 'superadmin': return redirect('/admin')
     if request.method == 'POST':
+        # Validasi opsional: Jika ingin mencegah seseorang memasukkan namanya sendiri sebagai auditor jika dilarang, bisa diatur di sini.
         tgl_obj = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
         baru = DataRPM(
             no_lha=request.form['no_lha'], jenis_audit=request.form['jenis_audit'], unit_kerja=request.form['unit_kerja'], deskripsi=request.form['deskripsi'],
@@ -303,18 +291,15 @@ def input_data():
         )
         db.session.add(baru)
         db.session.commit()
-        catat_log(f"Menambahkan RPM baru (LHA: {baru.no_lha}) untuk Unit Kerja: {baru.unit_kerja}")
+        catat_log(f"Menambahkan RPM baru (LHA: {baru.no_lha})")
         flash("Data RPM berhasil ditambahkan!", "success")
         return redirect('/monitoring')
     return render_template('form.html')
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
-@role_required('auditor')
 def edit_data(id):
     rpm = DataRPM.query.get_or_404(id)
-    
-    # PROTEKSI BACKEND 1: Hanya Auditor Penanggung Jawab yang boleh masuk halaman ini
     if rpm.wa_auditor != session.get('no_wa'):
         flash("AKSES DITOLAK: Anda bukan Auditor yang bertanggung jawab atas RPM ini!", "danger")
         return redirect('/monitoring')
@@ -349,57 +334,47 @@ def edit_data(id):
             
         rpm.status_approval = 'Menunggu Approval'
         db.session.commit()
-        
-        catat_log(f"Mengusulkan perubahan status/tenggat untuk LHA: {rpm.no_lha}")
-        pesan_kt = f"🔔 *Notifikasi SIMA RPM*\n\nTerdapat usulan perubahan status RPM untuk Unit Kerja *{rpm.unit_kerja}* dari Auditor *{rpm.nama_auditor}* yang memerlukan persetujuan Anda.\n\nSilakan cek Menu Approval di Dashboard."
-        send_wa_fonnte(rpm.wa_ketua_tim, pesan_kt)
-        
-        flash("Usulan dikirim ke Ketua Tim Audit dan notifikasi WA telah diteruskan!", "success")
+        catat_log(f"Mengusulkan perubahan status untuk LHA: {rpm.no_lha}")
+        send_wa_fonnte(rpm.wa_ketua_tim, f"🔔 Usulan perubahan status RPM LHA {rpm.no_lha} memerlukan persetujuan Anda.")
+        flash("Usulan dikirim ke Ketua Tim Audit!", "success")
         return redirect('/monitoring')
     return render_template('edit.html', item=rpm)
 
 @app.route('/request_delete/<int:id>', methods=['POST'])
 @login_required
-@role_required('auditor')
 def request_delete(id):
     rpm = DataRPM.query.get_or_404(id)
-    
-    # PROTEKSI BACKEND 2: Hanya Auditor Penanggung Jawab yang boleh menghapus
     if rpm.wa_auditor != session.get('no_wa'):
-        flash("AKSES DITOLAK: Anda bukan Auditor yang bertanggung jawab atas RPM ini!", "danger")
+        flash("AKSES DITOLAK: Anda bukan Auditor yang bertanggung jawab!", "danger")
         return redirect('/monitoring')
         
     user = User.query.filter_by(username=session['username']).first()
     if not user or not check_password_hash(user.password, request.form['password_otorisasi']):
-        flash("Otorisasi Gagal: Password Anda salah!", "danger")
+        flash("Otorisasi Gagal: Password salah!", "danger")
         return redirect('/monitoring')
 
     rpm.usulan_status = 'HAPUS'
     rpm.status_approval = 'Menunggu Approval'
     db.session.commit()
-    
-    catat_log(f"Mengusulkan PENGHAPUSAN data RPM (LHA: {rpm.no_lha} - {rpm.unit_kerja})")
-    pesan_kt = f"⚠️ *PERINGATAN SIMA RPM*\n\nAuditor *{rpm.nama_auditor}* mengusulkan PENGHAPUSAN data RPM untuk Unit Kerja *{rpm.unit_kerja}* (LHA: {rpm.no_lha}).\n\nMohon otorisasi persetujuan di Menu Approval."
-    send_wa_fonnte(rpm.wa_ketua_tim, pesan_kt)
-
-    flash("Usulan penghapusan RPM telah dikirim ke Ketua Tim untuk di-review.", "warning")
+    catat_log(f"Mengusulkan PENGHAPUSAN LHA: {rpm.no_lha}")
+    send_wa_fonnte(rpm.wa_ketua_tim, f"⚠️ Usulan PENGHAPUSAN RPM LHA {rpm.no_lha}.")
+    flash("Usulan penghapusan dikirim ke Ketua Tim.", "warning")
     return redirect('/monitoring')
 
+# --- SEMUA USER BISA MEMBUKA HALAMAN APPROVAL (TRANSPARANSI) ---
 @app.route('/approval', methods=['GET'])
 @login_required
-@role_required('ketuatim')
 def approval_dashboard():
-    # Menampilkan SEMUA usulan agar Ketua Tim bisa melihat tugas KT lain (Transparansi)
+    if session.get('role') == 'superadmin': return redirect('/admin')
     usulan = DataRPM.query.filter_by(status_approval='Menunggu Approval').all()
     return render_template('approval.html', usulan=usulan)
 
 @app.route('/process_approval/<int:id>', methods=['POST'])
 @login_required
-@role_required('ketuatim')
 def process_approval(id):
     rpm = DataRPM.query.get_or_404(id)
     
-    # PROTEKSI BACKEND 3: Hanya KT Penanggung Jawab yang boleh mengeksekusi
+    # KUNCI UTAMA: Hanya Ketua Tim yang nomor WA-nya cocok dengan data tersebut yang boleh mengeksekusi
     if rpm.wa_ketua_tim != session.get('no_wa'):
         flash("AKSES DITOLAK: Keputusan ini hanya boleh diambil oleh Ketua Tim Penanggung Jawab!", "danger")
         return redirect('/approval')
@@ -414,43 +389,35 @@ def process_approval(id):
 
     if rpm.usulan_status == 'HAPUS':
         if action == 'terima':
-            catat_log(f"Menyetujui penghapusan permanen RPM (LHA: {rpm.no_lha} - {rpm.unit_kerja})")
+            catat_log(f"Menyetujui penghapusan permanen LHA: {rpm.no_lha}")
             no_lha = rpm.no_lha
-            unit = rpm.unit_kerja
             db.session.delete(rpm)
             db.session.commit()
-            pesan = f"✅ *Notifikasi SIMA RPM*\n\nUsulan penghapusan RPM LHA: {no_lha} (Unit: {unit}) telah *DISETUJUI* oleh Ketua Tim dan dihapus dari sistem."
-            send_wa_fonnte(rpm.wa_auditor, pesan)
-            flash("RPM berhasil dihapus secara permanen.", "success")
-            return redirect('/approval')
+            send_wa_fonnte(rpm.wa_auditor, f"✅ Usulan penghapusan LHA {no_lha} disetujui.")
+            flash("RPM berhasil dihapus permanen.", "success")
         else:
-            catat_log(f"Menolak usulan penghapusan RPM (LHA: {rpm.no_lha})")
             rpm.status_approval = None
             rpm.usulan_status = None
             db.session.commit()
-            send_wa_fonnte(rpm.wa_auditor, f"❌ Usulan penghapusan RPM LHA {rpm.no_lha} DITOLAK Ketua Tim.")
-            flash("Usulan penghapusan dibatalkan/ditolak.", "warning")
-            return redirect('/approval')
+            send_wa_fonnte(rpm.wa_auditor, f"❌ Usulan penghapusan LHA {rpm.no_lha} ditolak.")
+            flash("Usulan penghapusan ditolak.", "warning")
     else:
         if action == 'terima':
             rpm.status = rpm.usulan_status
             if rpm.usulan_tenggat: rpm.tenggat_waktu = rpm.usulan_tenggat
-            catat_log(f"Menyetujui perubahan status RPM (LHA: {rpm.no_lha}) menjadi {rpm.status}")
-            pesan_approval = f"✅ *Notifikasi SIMA RPM*\n\nUsulan tindak lanjut RPM Unit Kerja *{rpm.unit_kerja}* telah *DISETUJUI*.\nStatus saat ini: *{rpm.status}*"
-            send_wa_fonnte(rpm.wa_auditor, pesan_approval) 
-            send_wa_fonnte(rpm.wa_auditee, pesan_approval) 
+            catat_log(f"Menyetujui perubahan status LHA: {rpm.no_lha}")
+            send_wa_fonnte(rpm.wa_auditor, f"✅ Usulan status LHA {rpm.no_lha} disetujui.")
             rpm.status_approval = None
             rpm.usulan_status = None
             db.session.commit()
-            flash("Usulan disetujui! Notifikasi WA telah dikirim.", "success")
+            flash("Usulan disetujui!", "success")
         else:
-            catat_log(f"Menolak usulan perubahan status RPM (LHA: {rpm.no_lha})")
-            send_wa_fonnte(rpm.wa_auditor, f"❌ Usulan status RPM LHA {rpm.no_lha} DITOLAK Ketua Tim.")
+            send_wa_fonnte(rpm.wa_auditor, f"❌ Usulan status LHA {rpm.no_lha} ditolak.")
             rpm.status_approval = None
             rpm.usulan_status = None
             db.session.commit()
-            flash("Usulan perubahan ditolak.", "warning")
-        return redirect('/approval')
+            flash("Usulan ditolak.", "warning")
+    return redirect('/approval')
 
 @app.route('/uploads/<name>')
 @login_required
