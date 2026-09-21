@@ -84,9 +84,16 @@ class ActivityLog(db.Model):
     role = db.Column(db.String(20))
     aktivitas = db.Column(db.Text)
 
-# --- FUNGSI GLOBAL & KEAMANAN ---
+# --- FUNGSI GLOBAL & KEAMANAN (Dengan Auto-Cleanup 24 Jam) ---
+def bersihkan_log_lama():
+    """Fungsi ini otomatis dipanggil setiap ada aktivitas untuk menghapus log > 24 Jam"""
+    batas_waktu = datetime.now() - timedelta(hours=24)
+    ActivityLog.query.filter(ActivityLog.waktu < batas_waktu).delete()
+    # (Tidak perlu di-commit di sini, karena akan ikut ter-commit di fungsi catat_log)
+
 def catat_log(aktivitas):
     if 'username' in session:
+        bersihkan_log_lama() # Eksekusi pembersihan log lama
         log = ActivityLog(username=session['username'], nama_lengkap=session['nama_lengkap'], role=session['role'], aktivitas=aktivitas)
         db.session.add(log)
         db.session.commit()
@@ -156,6 +163,8 @@ def forgot_password():
                 pesan_wa = f"Halo *{user.nama_lengkap}*,\n\nBerikut adalah password baru untuk akun SIMA RPM Anda:\n\n🔑 *{new_password}*\n\nSilakan login kembali dan jaga kerahasiaan password ini."
                 send_wa_fonnte(user.no_wa, pesan_wa)
                 
+                # Pembersihan log otomatis juga diterapkan di sini
+                bersihkan_log_lama()
                 log = ActivityLog(username=user.username, nama_lengkap=user.nama_lengkap, role=user.role, aktivitas="Melakukan Request Lupa Password via WA")
                 db.session.add(log)
                 db.session.commit()
