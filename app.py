@@ -422,7 +422,22 @@ def process_approval(id):
 @login_required
 def download_file(name):
     return send_from_directory(app.config['UPLOAD_FOLDER'], name)
-
+# --- FITUR BARU: GANTI NOMOR WA OLEH USER ---
+@app.route('/update_wa', methods=['POST'])
+@login_required
+def update_wa():
+    user = User.query.filter_by(username=session['username']).first()
+    # Otorisasi menggunakan password sebelum mengubah No WA
+    if check_password_hash(user.password, request.form['password_otorisasi']):
+        user.no_wa = request.form['new_wa']
+        db.session.commit()
+        catat_log(f"Memperbarui Nomor WhatsApp menjadi {user.no_wa}")
+        flash("Nomor WhatsApp Anda berhasil diperbarui!", "success")
+    else:
+        flash("GAGAL: Password otorisasi Anda salah!", "danger")
+    
+    # Kembali ke halaman sebelumnya
+    return redirect(request.referrer or '/')
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
