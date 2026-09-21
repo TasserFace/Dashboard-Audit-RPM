@@ -13,14 +13,12 @@ from datetime import datetime, date, timedelta
 app = Flask(__name__)
 app.secret_key = "kunci_rahasia_untuk_sesi_dan_notifikasi"
 
-# --- FUNGSI ZONA WAKTU INDONESIA BARAT (GMT+7) ---
 def waktu_sekarang():
     return datetime.utcnow() + timedelta(hours=7)
 
 def hari_ini_wib():
     return waktu_sekarang().date()
 
-# --- KONFIGURASI API FONNTE ---
 FONNTE_TOKEN = "MASUKKAN_TOKEN_API_FONNTE_ANDA_DISINI"
 
 def send_wa_fonnte(target, message):
@@ -32,7 +30,6 @@ def send_wa_fonnte(target, message):
     except Exception as e:
         print(f"Gagal WA Fonnte: {e}")
 
-# --- KONFIGURASI PENYIMPANAN PERMANEN (BRANKAS) ---
 if os.path.exists('/app/data'):
     BASE_DIR = '/app/data'
 else:
@@ -51,7 +48,6 @@ db = SQLAlchemy(app)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# --- SKEMA DATABASE ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True)
@@ -91,7 +87,6 @@ class ActivityLog(db.Model):
     role = db.Column(db.String(20))
     aktivitas = db.Column(db.Text)
 
-# --- FUNGSI GLOBAL & KEAMANAN ---
 def bersihkan_log_lama():
     batas_waktu = waktu_sekarang() - timedelta(hours=24)
     ActivityLog.query.filter(ActivityLog.waktu < batas_waktu).delete()
@@ -103,14 +98,12 @@ def catat_log(aktivitas):
         db.session.add(log)
         db.session.commit()
 
-# --- PERBAIKAN: ANGKA NOTIFIKASI HANYA UNTUK WA KETUA TIM YANG LOGIN ---
 @app.context_processor
 def inject_pending_count():
     if session.get('role') == 'ketuatim':
-        user_kt = User.query.filter_by(username=session['username']).first()
-        if user_kt:
-            count = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=user_kt.no_wa).count()
-            return dict(pending_count=count)
+        # Angka lonceng hanya menghitung yang menjadi tanggung jawabnya sendiri
+        count = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=session.get('no_wa')).count()
+        return dict(pending_count=count)
     return dict(pending_count=0)
 
 def login_required(f):
@@ -133,7 +126,6 @@ def role_required(role):
         return decorated_function
     return decorator
 
-# --- ROUTES LOGIN & LOGOUT ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -144,6 +136,8 @@ def login():
             session['username'] = user.username
             session['nama_lengkap'] = user.nama_lengkap
             session['role'] = user.role
+            # SIMPAN NOMOR WA KE DALAM SESI LOGIN UNTUK CROSSCHECK
+            session['no_wa'] = user.no_wa 
             catat_log("Login ke dalam sistem")
             return redirect('/admin') if user.role == 'superadmin' else redirect('/')
         else:
@@ -170,19 +164,16 @@ def forgot_password():
                 db.session.commit()
                 pesan_wa = f"Halo *{user.nama_lengkap}*,\n\nBerikut adalah password baru untuk akun SIMA RPM Anda:\n\n🔑 *{new_password}*\n\nSilakan login kembali dan jaga kerahasiaan password ini."
                 send_wa_fonnte(user.no_wa, pesan_wa)
-                
                 bersihkan_log_lama()
                 log = ActivityLog(username=user.username, nama_lengkap=user.nama_lengkap, role=user.role, aktivitas="Melakukan Request Lupa Password via WA")
                 db.session.add(log)
                 db.session.commit()
-                
-                flash(f"Password baru telah berhasil dikirim ke WhatsApp Anda ({user.no_wa[:4]}xxx).", "success")
+                flash(f"Password baru telah berhasil dikirim ke WhatsApp Anda.", "success")
                 return redirect('/login')
         else:
             flash("Username (PN) tidak ditemukan dalam sistem.", "danger")
     return render_template('forgot_password.html')
 
-# --- ROUTES SUPER ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 @role_required('superadmin')
@@ -276,7 +267,6 @@ def admin_edit_wa(id):
     flash(f"Nomor WhatsApp untuk {user.nama_lengkap} berhasil diperbarui!", "success")
     return redirect('/admin')
 
-# --- ROUTE UTAMA ---
 @app.route('/')
 @login_required
 def dashboard_summary():
@@ -323,6 +313,12 @@ def input_data():
 @role_required('auditor')
 def edit_data(id):
     rpm = DataRPM.query.get_or_404(id)
+    
+    # PROTEKSI BACKEND 1: Hanya Auditor Penanggung Jawab yang boleh masuk halaman ini
+    if rpm.wa_auditor != session.get('no_wa'):
+        flash("AKSES DITOLAK: Anda bukan Auditor yang bertanggung jawab atas RPM ini!", "danger")
+        return redirect('/monitoring')
+        
     if request.method == 'POST':
         user = User.query.filter_by(username=session['username']).first()
         if not user or not check_password_hash(user.password, request.form['password_otorisasi']):
@@ -366,12 +362,18 @@ def edit_data(id):
 @login_required
 @role_required('auditor')
 def request_delete(id):
+    rpm = DataRPM.query.get_or_404(id)
+    
+    # PROTEKSI BACKEND 2: Hanya Auditor Penanggung Jawab yang boleh menghapus
+    if rpm.wa_auditor != session.get('no_wa'):
+        flash("AKSES DITOLAK: Anda bukan Auditor yang bertanggung jawab atas RPM ini!", "danger")
+        return redirect('/monitoring')
+        
     user = User.query.filter_by(username=session['username']).first()
     if not user or not check_password_hash(user.password, request.form['password_otorisasi']):
         flash("Otorisasi Gagal: Password Anda salah!", "danger")
         return redirect('/monitoring')
 
-    rpm = DataRPM.query.get_or_404(id)
     rpm.usulan_status = 'HAPUS'
     rpm.status_approval = 'Menunggu Approval'
     db.session.commit()
@@ -383,20 +385,25 @@ def request_delete(id):
     flash("Usulan penghapusan RPM telah dikirim ke Ketua Tim untuk di-review.", "warning")
     return redirect('/monitoring')
 
-# --- PERBAIKAN: ISI TABEL APPROVAL HANYA UNTUK WA KETUA TIM YANG LOGIN ---
 @app.route('/approval', methods=['GET'])
 @login_required
 @role_required('ketuatim')
 def approval_dashboard():
-    user_kt = User.query.filter_by(username=session['username']).first()
-    # Filter DataRPM by status_approval DAN wa_ketua_tim yang cocok dengan no_wa milik user_kt
-    usulan = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=user_kt.no_wa).all()
+    # Menampilkan SEMUA usulan agar Ketua Tim bisa melihat tugas KT lain (Transparansi)
+    usulan = DataRPM.query.filter_by(status_approval='Menunggu Approval').all()
     return render_template('approval.html', usulan=usulan)
 
 @app.route('/process_approval/<int:id>', methods=['POST'])
 @login_required
 @role_required('ketuatim')
 def process_approval(id):
+    rpm = DataRPM.query.get_or_404(id)
+    
+    # PROTEKSI BACKEND 3: Hanya KT Penanggung Jawab yang boleh mengeksekusi
+    if rpm.wa_ketua_tim != session.get('no_wa'):
+        flash("AKSES DITOLAK: Keputusan ini hanya boleh diambil oleh Ketua Tim Penanggung Jawab!", "danger")
+        return redirect('/approval')
+        
     user = User.query.filter_by(username=session['username']).first()
     action = request.form['action']
     
@@ -405,8 +412,6 @@ def process_approval(id):
             flash("Otorisasi Gagal: Password Anda salah!", "danger")
             return redirect('/approval')
 
-    rpm = DataRPM.query.get_or_404(id)
-    
     if rpm.usulan_status == 'HAPUS':
         if action == 'terima':
             catat_log(f"Menyetujui penghapusan permanen RPM (LHA: {rpm.no_lha} - {rpm.unit_kerja})")
@@ -414,7 +419,6 @@ def process_approval(id):
             unit = rpm.unit_kerja
             db.session.delete(rpm)
             db.session.commit()
-            
             pesan = f"✅ *Notifikasi SIMA RPM*\n\nUsulan penghapusan RPM LHA: {no_lha} (Unit: {unit}) telah *DISETUJUI* oleh Ketua Tim dan dihapus dari sistem."
             send_wa_fonnte(rpm.wa_auditor, pesan)
             flash("RPM berhasil dihapus secara permanen.", "success")
@@ -432,11 +436,9 @@ def process_approval(id):
             rpm.status = rpm.usulan_status
             if rpm.usulan_tenggat: rpm.tenggat_waktu = rpm.usulan_tenggat
             catat_log(f"Menyetujui perubahan status RPM (LHA: {rpm.no_lha}) menjadi {rpm.status}")
-            
             pesan_approval = f"✅ *Notifikasi SIMA RPM*\n\nUsulan tindak lanjut RPM Unit Kerja *{rpm.unit_kerja}* telah *DISETUJUI*.\nStatus saat ini: *{rpm.status}*"
             send_wa_fonnte(rpm.wa_auditor, pesan_approval) 
             send_wa_fonnte(rpm.wa_auditee, pesan_approval) 
-            
             rpm.status_approval = None
             rpm.usulan_status = None
             db.session.commit()
