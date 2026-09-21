@@ -8,7 +8,7 @@
     <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; } .bg-mentari { background-color: #71C5E8 !important; color: #000; }</style>
 </head>
 <body class="bg-light">
-    <!-- Navbar Approval -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
@@ -36,7 +36,7 @@
         <div class="card shadow-sm mb-3 border-0 border-start border-4 {% if item.usulan_status == 'HAPUS' %}border-danger{% else %}border-warning{% endif %}">
             <div class="card-body">
                 <div class="row align-items-center">
-                    <div class="col-md-8">
+                    <div class="col-md-7">
                         <h5 class="fw-bold text-nusantara">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6">{{ item.jenis_audit }}</span></h5>
                         
                         <p class="mb-1 text-muted d-flex align-items-center">
@@ -58,7 +58,6 @@
                             <strong class="text-primary mt-1 d-block">📄 Bukti Status: <a href="/uploads/{{ item.file_bukti }}" target="_blank" class="text-decoration-none">Lihat Dokumen</a></strong>
                             {% endif %}
                             
-                            <!-- LOGIKA ANTI-CRASH (Tanpa strftime) -->
                             {% if item.usulan_tenggat and item.tenggat_waktu and item.usulan_tenggat != item.tenggat_waktu %}
                             <hr class="my-2">
                             <strong>Perubahan Tenggat:</strong> <span class="text-danger">{{ item.tenggat_waktu }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_tenggat }}</span><br>
@@ -71,24 +70,35 @@
                         {% endif %}
                     </div>
                     
-                    <div class="col-md-4 text-end">
-                        <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
-                            <input type="hidden" name="action" value="tolak">
-                            <input type="hidden" name="password_otorisasi" value="tolak_sementara"> 
-                            <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
-                        </form>
+                    <div class="col-md-5 text-end border-start">
+                        <p class="small text-muted mb-2">Tanggung Jawab: <strong>{{ item.nama_ketua_tim }}</strong></p>
                         
-                        {% if item.usulan_status == 'HAPUS' %}
-                        <button class="btn btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui Penghapusan</button>
+                        <!-- KONTROL AKSES TOMBOL PERSETUJUAN -->
+                        {% if session['no_wa'] == item.wa_ketua_tim %}
+                            <!-- Jika ini tanggung jawab KT yang sedang Login -->
+                            <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
+                                <input type="hidden" name="action" value="tolak">
+                                <input type="hidden" name="password_otorisasi" value="tolak_sementara"> 
+                                <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
+                            </form>
+                            
+                            {% if item.usulan_status == 'HAPUS' %}
+                            <button class="btn btn-danger fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui Hapus</button>
+                            {% else %}
+                            <button class="btn btn-success fw-bold bg-nusantara shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui</button>
+                            {% endif %}
+                            
                         {% else %}
-                        <button class="btn btn-success fw-bold bg-nusantara shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">Setujui</button>
+                            <!-- Jika tanggung jawab KT lain, maka tombol di-disable -->
+                            <button class="btn btn-outline-secondary fw-bold me-2" disabled>Tolak (Bukan Otoritas)</button>
+                            <button class="btn btn-secondary fw-bold shadow-sm" disabled>Setujui (Bukan Otoritas)</button>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- MODAL 1: DESKRIPSI -->
+        <!-- MODAL DESKRIPSI -->
         <div class="modal fade" id="modalDeskripsi{{ item.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 border-top border-4 border-info">
@@ -101,17 +111,13 @@
                         <p class="mb-3"><strong>Unit Kerja:</strong> {{ item.unit_kerja }}</p>
                         <h6 class="fw-bold text-nusantara mt-2">Deskripsi RPM:</h6>
                         <p class="border border-info p-3 rounded bg-light text-dark" style="white-space: pre-wrap;">{{ item.deskripsi }}</p>
-                        <hr>
-                        <p class="mb-0 small text-muted">PIC Auditee: <strong>{{ item.nama_pic }}</strong> ({{ item.wa_auditee }})</p>
-                    </div>
-                    <div class="modal-footer border-0">
-                        <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Tutup</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- MODAL 2: OTORISASI -->
+        <!-- MODAL OTORISASI -->
+        {% if session['no_wa'] == item.wa_ketua_tim %}
         <div class="modal fade" id="modalApprove{{ item.id }}" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 {% if item.usulan_status == 'HAPUS' %}border-top border-4 border-danger{% endif %}">
@@ -124,12 +130,10 @@
                             <input type="hidden" name="action" value="terima">
                             {% if item.usulan_status == 'HAPUS' %}
                             <div class="alert alert-danger bg-danger bg-opacity-10 text-danger border-danger fw-bold text-center px-2 py-3 mb-3">
-                                🛑 PERINGATAN 🛑<br>Yakin menyetujui PENGHAPUSAN PERMANEN pada RPM Unit Kerja {{ item.unit_kerja }}?
+                                🛑 PERINGATAN 🛑<br>Yakin menyetujui PENGHAPUSAN PERMANEN RPM {{ item.unit_kerja }}?
                             </div>
                             {% endif %}
-                            <label class="fw-bold {% if item.usulan_status == 'HAPUS' %}text-danger{% else %}text-nusantara{% endif %}">
-                                Masukkan Password (Ketua Tim):
-                            </label>
+                            <label class="fw-bold {% if item.usulan_status == 'HAPUS' %}text-danger{% else %}text-nusantara{% endif %}">Masukkan Password (Ketua Tim):</label>
                             <input type="password" class="form-control {% if item.usulan_status == 'HAPUS' %}border-danger{% else %}border-primary{% endif %} mt-2" name="password_otorisasi" required>
                         </div>
                         <div class="modal-footer border-0">
@@ -142,9 +146,10 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         
         {% else %}
-        <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan.</div>
+        <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan di dalam sistem.</div>
         {% endfor %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
