@@ -2,126 +2,57 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Menu Tindak Lanjut</title>
+    <title>Tindak Lanjut RPM</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; }</style>
+    <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; }</style>
 </head>
 <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
-            <div class="d-flex text-white align-items-center ms-auto">
-                <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
-                <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link text-white" href="/">Ringkasan</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/monitoring">Monitoring RPM</a></li>
+                </ul>
+                <div class="d-flex text-white align-items-center ms-auto">
+                    <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
+                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
+                </div>
             </div>
         </div>
     </nav>
-
-    <div class="container mt-4" style="max-width: 600px;">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-        {% endwith %}
-
-        <div class="card shadow-sm border-0 border-top border-4 border-primary mb-5">
-            <div class="card-header bg-white py-3"><h5 class="mb-0 fw-bold text-nusantara">Menu Tindak Lanjut RPM</h5></div>
-            <div class="card-body p-4">
-                
-                <!-- Pastikan form menggunakan enctype="multipart/form-data" -->
+    <div class="container" style="max-width: 700px;">
+        <h4 class="fw-bold mb-3 text-nusantara">Formulir Usulan Tindak Lanjut RPM</h4>
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
                 <form action="/edit/{{ item.id }}" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3"><label class="fw-bold">Status Saat Ini:</label> <span class="badge bg-secondary">{{ item.status }}</span></div>
                     <div class="mb-3">
-                        <label class="form-label text-nusantara fw-bold">Unit Kerja</label>
-                        <input type="text" class="form-control bg-light" value="{{ item.unit_kerja }} (Auditor: {{ item.nama_auditor }})" disabled>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-nusantara">Ubah Status Tindak Lanjut</label>
-                        <select class="form-select border-primary" id="status_select" name="status" required>
+                        <label class="fw-bold">Usulan Status Baru</label>
+                        <select class="form-select border-primary" name="status" required>
                             <option value="Dalam Pemantauan" {% if item.status == 'Dalam Pemantauan' %}selected{% endif %}>Dalam Pemantauan</option>
                             <option value="Belum Memadai" {% if item.status == 'Belum Memadai' %}selected{% endif %}>Belum Memadai</option>
                             <option value="Memadai" {% if item.status == 'Memadai' %}selected{% endif %}>Memadai</option>
                         </select>
                     </div>
-
-                    <!-- AREA UPLOAD STATUS -->
-                    <div class="mb-4 p-3 bg-light border border-info rounded" id="upload_section" style="display: none;">
-                        <label class="form-label fw-bold text-nusantara">Upload Dokumen Bukti Status (PDF/JPG) <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" id="file_bukti" name="file_bukti" accept=".pdf, .jpg, .jpeg">
-                    </div>
-
+                    <div class="mb-3"><label class="fw-bold">Unggah Bukti Status (PDF/JPG)</label><input type="file" class="form-control" name="file_bukti"></div>
+                    <hr>
+                    <div class="mb-3"><label class="fw-bold">Usulkan Tenggat Waktu Baru</label><input type="date" class="form-control" name="tenggat_waktu" value="{{ item.tenggat_waktu }}" required></div>
+                    <div class="mb-3"><label class="fw-bold">Nomor Berita Acara (BA) Kesepakatan</label><input type="text" class="form-control" name="no_ba" placeholder="Wajib diisi jika mengubah tenggat"></div>
+                    <div class="mb-3"><label class="fw-bold">Tanggal Berita Acara (BA)</label><input type="date" class="form-control" name="tgl_ba"></div>
+                    <div class="mb-3"><label class="fw-bold">Unggah Dokumen BA (PDF/JPG)</label><input type="file" class="form-control" name="file_ba"></div>
                     <hr>
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-nusantara">Tenggat Waktu</label>
-                        <input type="date" class="form-control w-50" id="tenggat_waktu" name="tenggat_waktu" value="{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}" required>
+                        <label class="fw-bold text-danger">Otorisasi Password Akun Anda</label>
+                        <input type="password" class="form-control border-danger" name="password_otorisasi" required placeholder="Masukkan password Anda untuk konfirmasi">
                     </div>
-
-                    <!-- AREA BERITA ACARA (Tersembunyi, muncul jika tanggal berubah) -->
-                    <div id="ba_section" class="p-3 mb-4 bg-warning bg-opacity-25 border border-warning rounded" style="display: none;">
-                        <h6 class="text-danger fw-bold mb-3">⚠️ Perubahan Tenggat Terdeteksi</h6>
-                        
-                        <label class="form-label text-dark fw-bold">Nomor Berita Acara Kesepakatan (BA)</label>
-                        <input type="text" class="form-control mb-3 border-dark" id="no_ba" name="no_ba" placeholder="Contoh: BA-01/2026">
-                        
-                        <label class="form-label text-dark fw-bold">Tanggal Berita Acara</label>
-                        <input type="date" class="form-control mb-3 border-dark" id="tgl_ba" name="tgl_ba">
-                        
-                        <label class="form-label text-dark fw-bold">Upload File BA Kesepakatan (PDF/JPG) <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control border-dark" id="file_ba" name="file_ba" accept=".pdf, .jpg, .jpeg">
-                    </div>
-
-                    <hr>
-                    <div class="mb-4 p-3 bg-secondary bg-opacity-10 rounded">
-                        <label class="form-label fw-bold text-dark">Otorisasi Perubahan</label>
-                        <input type="password" class="form-control border-dark" name="password_otorisasi" placeholder="Masukkan Password Akun Anda" required>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <a href="/" class="btn btn-secondary fw-bold">Batal</a>
-                        <button type="submit" class="btn btn-primary fw-bold bg-nusantara">Kirim Usulan ke Ketua Tim</button>
-                    </div>
+                    <button type="submit" class="btn btn-success w-100 fw-bold bg-nusantara">Kirim Usulan ke Ketua Tim</button>
                 </form>
             </div>
         </div>
     </div>
-
-    <script>
-        // Logika kemunculan form upload file bukti status
-        const originalStatus = "{{ item.status }}";
-        const statusSelect = document.getElementById('status_select');
-        const uploadSection = document.getElementById('upload_section');
-        const fileBuktiInput = document.getElementById('file_bukti');
-
-        statusSelect.addEventListener('change', function() {
-            if (this.value !== originalStatus) {
-                uploadSection.style.display = 'block';
-                fileBuktiInput.required = true;
-            } else {
-                uploadSection.style.display = 'none';
-                fileBuktiInput.required = false;
-            }
-        });
-
-        // Logika kemunculan form Berita Acara & file BA
-        const originalDate = "{{ item.tenggat_waktu.strftime('%Y-%m-%d') }}";
-        const dateInput = document.getElementById('tenggat_waktu');
-        const baSection = document.getElementById('ba_section');
-        const noBaInput = document.getElementById('no_ba');
-        const tglBaInput = document.getElementById('tgl_ba');
-        const fileBaInput = document.getElementById('file_ba'); // Tambahan File BA
-
-        dateInput.addEventListener('change', function() {
-            if (this.value !== originalDate) {
-                baSection.style.display = 'block';
-                noBaInput.required = true;
-                tglBaInput.required = true;
-                fileBaInput.required = true; // File diwajibkan
-            } else {
-                baSection.style.display = 'none';
-                noBaInput.required = false;
-                tglBaInput.required = false;
-                fileBaInput.required = false;
-            }
-        });
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
