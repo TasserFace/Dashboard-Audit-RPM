@@ -103,11 +103,14 @@ def catat_log(aktivitas):
         db.session.add(log)
         db.session.commit()
 
+# --- PERBAIKAN: ANGKA NOTIFIKASI HANYA UNTUK WA KETUA TIM YANG LOGIN ---
 @app.context_processor
 def inject_pending_count():
     if session.get('role') == 'ketuatim':
-        count = DataRPM.query.filter_by(status_approval='Menunggu Approval').count()
-        return dict(pending_count=count)
+        user_kt = User.query.filter_by(username=session['username']).first()
+        if user_kt:
+            count = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=user_kt.no_wa).count()
+            return dict(pending_count=count)
     return dict(pending_count=0)
 
 def login_required(f):
@@ -187,19 +190,14 @@ def admin_dashboard():
     if request.method == 'POST':
         no_wa_baru = request.form['no_wa']
         username_baru = request.form['username']
-        
-        # Pengecekan 1: Apakah Username (PN) sudah ada?
         cek_username = User.query.filter_by(username=username_baru).first()
         if cek_username:
             flash(f"GAGAL: Username (PN) '{username_baru}' sudah terdaftar di sistem!", "danger")
             return redirect('/admin')
-            
-        # Pengecekan 2: Apakah No WA sudah ada?
         cek_wa = User.query.filter_by(no_wa=no_wa_baru).first()
         if cek_wa:
             flash(f"GAGAL: Nomor WhatsApp {no_wa_baru} sudah digunakan oleh akun '{cek_wa.nama_lengkap}'!", "danger")
             return redirect('/admin')
-            
         try:
             hashed_pw = generate_password_hash(request.form['password'])
             baru = User(username=username_baru, nama_lengkap=request.form['nama_lengkap'], password=hashed_pw, no_wa=no_wa_baru, role=request.form['role'])
@@ -210,9 +208,7 @@ def admin_dashboard():
         except IntegrityError:
             db.session.rollback()
             flash("GAGAL: Terjadi kesalahan pada integritas database!", "danger")
-            
         return redirect('/admin')
-        
     users = User.query.all()
     return render_template('admin.html', users=users)
 
@@ -269,13 +265,10 @@ def admin_edit_user(id):
 def admin_edit_wa(id):
     user = User.query.get_or_404(id)
     new_wa = request.form['new_wa']
-    
-    # Pengecekan: Pastikan No WA baru belum dipakai orang lain (selain dirinya sendiri)
     cek_wa = User.query.filter(User.no_wa == new_wa, User.id != id).first()
     if cek_wa:
         flash(f"GAGAL: Nomor WhatsApp {new_wa} sudah dipakai oleh user '{cek_wa.nama_lengkap}'!", "danger")
         return redirect('/admin')
-        
     old_wa = user.no_wa
     user.no_wa = new_wa
     db.session.commit()
@@ -390,11 +383,14 @@ def request_delete(id):
     flash("Usulan penghapusan RPM telah dikirim ke Ketua Tim untuk di-review.", "warning")
     return redirect('/monitoring')
 
+# --- PERBAIKAN: ISI TABEL APPROVAL HANYA UNTUK WA KETUA TIM YANG LOGIN ---
 @app.route('/approval', methods=['GET'])
 @login_required
 @role_required('ketuatim')
 def approval_dashboard():
-    usulan = DataRPM.query.filter_by(status_approval='Menunggu Approval').all()
+    user_kt = User.query.filter_by(username=session['username']).first()
+    # Filter DataRPM by status_approval DAN wa_ketua_tim yang cocok dengan no_wa milik user_kt
+    usulan = DataRPM.query.filter_by(status_approval='Menunggu Approval', wa_ketua_tim=user_kt.no_wa).all()
     return render_template('approval.html', usulan=usulan)
 
 @app.route('/process_approval/<int:id>', methods=['POST'])
