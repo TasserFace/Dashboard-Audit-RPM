@@ -71,9 +71,7 @@ class DataRPM(db.Model):
     wa_ketua_tim = db.Column(db.String(20))
     status = db.Column(db.String(50), default="Dalam Pemantauan")
     
-    # KOLOM BARU UNTUK ARGO SLA AUDITOR
     tgl_terima_dokumen = db.Column(db.Date, nullable=True)
-    
     status_approval = db.Column(db.String(50), nullable=True)
     usulan_status = db.Column(db.String(50), nullable=True)
     usulan_tenggat = db.Column(db.Date, nullable=True)
@@ -224,13 +222,10 @@ def admin_edit_wa(id):
 def dashboard_summary():
     if session.get('role') == 'superadmin': return redirect('/admin')
     data_rpm = DataRPM.query.all()
-    
-    # REVISI LOGIKA DASHBOARD (Lebih Jelas Berdasarkan Pemisahan Domain)
     total = len(data_rpm)
     selesai = sum(1 for item in data_rpm if item.status == 'Memadai')
     pemantauan_auditee = sum(1 for item in data_rpm if item.status == 'Dalam Pemantauan' or item.status == 'Belum Memadai')
     reviu_auditor = sum(1 for item in data_rpm if item.status == 'Sedang Direviu Auditor')
-    
     return render_template('dashboard_summary.html', total=total, selesai=selesai, pemantauan=pemantauan_auditee, reviu=reviu_auditor)
 
 @app.route('/monitoring')
@@ -240,7 +235,6 @@ def monitoring():
     hari_ini = hari_ini_wib()
     data_rpm = DataRPM.query.all()
     
-    # LOGIKA ARGO SLA GANDA (Auditee vs Auditor)
     for item in data_rpm:
         if item.status == 'Dalam Pemantauan' or item.status == 'Belum Memadai':
             item.sisa_hari = (item.tenggat_waktu - hari_ini).days
@@ -250,7 +244,6 @@ def monitoring():
         else:
             item.sisa_hari = 0
             
-    # Urutkan: Yang kritis/telat di atas
     data_rpm_sorted = sorted(data_rpm, key=lambda x: (1 if x.status == 'Memadai' else 0, x.sisa_hari))
     return render_template('index.html', data=data_rpm_sorted)
 
@@ -278,21 +271,54 @@ def input_data():
         return redirect('/monitoring')
     return render_template('form.html')
 
-# RUTE BARU: TERIMA DOKUMEN & MULAI ARGO 10 HARI AUDITOR
-@app.route('/terima_dokumen/<int:id>', methods=['POST'])
+# --- RUTE BARU: PINTU MASUK TINDAK LANJUT MODAL ---
+@app.route('/proses_tindak_lanjut/<int:id>', methods=['POST'])
 @login_required
-def terima_dokumen(id):
+def proses_tindak_lanjut(id):
     rpm = DataRPM.query.get_or_404(id)
     if rpm.wa_auditor != session.get('no_wa'):
         flash("AKSES DITOLAK: Anda bukan Auditor PIC di LHA ini!", "danger")
         return redirect('/monitoring')
         
-    rpm.status = "Sedang Direviu Auditor"
-    rpm.tgl_terima_dokumen = hari_ini_wib()
-    db.session.commit()
-    
-    catat_log(f"Menerima dokumen TL (LHA: {rpm.no_lha}). Argo SLA 10 Hari Auditor Dimulai.")
-    flash("Dokumen telah diterima! Argo batas waktu reviu Auditor 10 hari telah berjalan.", "success")
+    jenis_tindakan = request.form.get('jenis_tindakan')
+
+    # CABANG 1: TERIMA DOKUMEN (Ubah ke Sedang Direviu, Tanpa Approval)
+    if jenis_tindakan == 'terima_dokumen':
+        rpm.status = "Sedang Direviu Auditor"
+        rpm.tgl_terima_dokumen = hari_ini_wib()
+        db.session.commit()
+        catat_log(f"Menerima dokumen TL (LHA: {rpm.no_lha}). Argo SLA 10 Hari Dimulai.")
+        flash("Dokumen diterima! Status berubah menjadi 'Sedang Direviu Auditor' dan tombol 'Beri Keputusan LHA' telah aktif.", "success")
+        
+    # CABANG 2: KESEPAKATAN ULANG BA (Butuh Approval Ketua Tim)
+    elif jenis_tindakan == 'kesepakatan_ulang':
+        user = User.query.filter_by(username=session['username']).first()
+        if not user or not check_password_hash(user.password, request.form['password_otorisasi']):
+            flash("Otorisasi Gagal: Password Akun Anda salah!", "danger")
+            return redirect('/monitoring')
+            
+        rpm.usulan_tenggat = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
+        rpm.no_ba_kesepakatan = request.form.get('no_ba')
+        rpm.tgl_ba_kesepakatan = datetime.strptime(request.form.get('tgl_ba'), '%Y-%m-%d').date()
+        
+        file_ba = request.files.get('file_ba')
+        if file_ba and allowed_file(file_ba.filename):
+            filename_ba = secure_filename(f"BA_{id}_{waktu_sekarang().strftime('%Y%m%d%H%M%S')}_{file_ba.filename}")
+            file_ba.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_ba))
+            rpm.file_ba_kesepakatan = filename_ba
+        else:
+            flash("WAJIB mengunggah File BA Kesepakatan (PDF/JPG)!", "danger")
+            return redirect('/monitoring')
+            
+        # Status utama tetap tidak berubah, namun butuh approval Ketua Tim
+        rpm.usulan_status = rpm.status 
+        rpm.status_approval = 'Menunggu Approval'
+        db.session.commit()
+        
+        catat_log(f"Mengusulkan Kesepakatan Ulang (BA) untuk LHA: {rpm.no_lha}")
+        send_wa_fonnte(rpm.wa_ketua_tim, f"🔔 Usulan Kesepakatan Ulang (Perubahan Tenggat Waktu LHA {rpm.no_lha}) siap untuk direviu di Menu Approval.")
+        flash("Usulan Kesepakatan Ulang BA telah dikirim ke meja Ketua Tim!", "success")
+        
     return redirect('/monitoring')
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
@@ -319,21 +345,11 @@ def edit_data(id):
             filename = secure_filename(f"RPM_{id}_{waktu_sekarang().strftime('%Y%m%d%H%M%S')}_{file.filename}")
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             rpm.file_bukti = filename
-
-        rpm.usulan_tenggat = datetime.strptime(request.form['tenggat_waktu'], '%Y-%m-%d').date()
-        if rpm.usulan_tenggat != rpm.tenggat_waktu:
-            rpm.no_ba_kesepakatan = request.form.get('no_ba')
-            rpm.tgl_ba_kesepakatan = datetime.strptime(request.form.get('tgl_ba'), '%Y-%m-%d').date()
-            file_ba = request.files.get('file_ba')
-            if file_ba and allowed_file(file_ba.filename):
-                filename_ba = secure_filename(f"BA_{id}_{waktu_sekarang().strftime('%Y%m%d%H%M%S')}_{file_ba.filename}")
-                file_ba.save(os.path.join(app.config['UPLOAD_FOLDER'], filename_ba))
-                rpm.file_ba_kesepakatan = filename_ba
             
         rpm.status_approval = 'Menunggu Approval'
         db.session.commit()
         send_wa_fonnte(rpm.wa_ketua_tim, f"🔔 Usulan keputusan RPM LHA {rpm.no_lha} siap untuk Anda reviu di Menu Approval.")
-        flash("Usulan keputusan dikirim ke Ketua Tim!", "success")
+        flash("Usulan Keputusan LHA dikirim ke Ketua Tim!", "success")
         return redirect('/monitoring')
     return render_template('edit.html', item=rpm)
 
@@ -394,12 +410,13 @@ def process_approval(id):
         if action == 'terima':
             rpm.status = rpm.usulan_status
             if rpm.usulan_tenggat: rpm.tenggat_waktu = rpm.usulan_tenggat
-            send_wa_fonnte(rpm.wa_auditor, f"✅ Usulan status LHA {rpm.no_lha} disetujui (Menjadi {rpm.status}).")
+            send_wa_fonnte(rpm.wa_auditor, f"✅ Usulan status LHA {rpm.no_lha} telah disetujui.")
             rpm.status_approval = None
             rpm.usulan_status = None
             db.session.commit()
-            flash("Usulan disetujui!", "success")
+            flash("Tindak Lanjut / Kesepakatan Ulang telah Anda disetujui!", "success")
         else:
+            send_wa_fonnte(rpm.wa_auditor, f"❌ Usulan status LHA {rpm.no_lha} ditolak.")
             rpm.status_approval = None
             rpm.usulan_status = None
             db.session.commit()
