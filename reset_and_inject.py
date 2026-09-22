@@ -6,15 +6,13 @@ import random
 with app.app_context():
     print("⚠️ MEMULAI HARD RESET DATABASE...")
     
-    # 1. Hapus seluruh data lama
     db.drop_all()
     print("✅ Seluruh tabel lama telah dihapus.")
     
-    # 2. Buat tabel baru (dengan struktur terbaru termasuk tgl_terima_dokumen)
     db.create_all()
     print("✅ Struktur tabel baru telah diciptakan.")
 
-    # 3. Inject User Baru
+    # 1. INJEKSI USER (MENGGUNAKAN PN)
     users_data = [
         {"user": "admin", "nama": "Super Administrator", "role": "superadmin", "wa": "080000000000"},
         {"user": "00400001", "nama": "Bapak Budi (KT Jakarta)", "role": "auditor", "wa": "081100000001"},
@@ -28,98 +26,132 @@ with app.app_context():
         baru = User(
             username=u["user"],
             nama_lengkap=u["nama"],
-            password=generate_password_hash("admin"), # Semua password default adalah 'admin'
+            password=generate_password_hash("admin"), 
             no_wa=u["wa"],
             role=u["role"]
         )
         db.session.add(baru)
     
     db.session.commit()
-    print("✅ 5 User PN (Password: admin) dan 1 Super Admin berhasil disuntikkan.")
+    print("✅ 5 User PN (Password default: admin) dan 1 Super Admin berhasil disuntikkan.")
 
-    # 4. Inject 15 Data Kasus RPM
+    # 2. ALUR RELASI (MUARA APPROVAL)
+    assignments = [
+        {"aud": "Rayhan (Auditor/KT Hybrid)", "wa_aud": "081100000002", "kt": "Bapak Budi (KT Jakarta)", "wa_kt": "081100000001"},
+        {"aud": "Deka (Auditor Jkt)", "wa_aud": "081100000003", "kt": "Bapak Budi (KT Jakarta)", "wa_kt": "081100000001"},
+        {"aud": "Ani (Auditor Jateng)", "wa_aud": "081100000005", "kt": "Ibu Siti (KT Jateng)", "wa_kt": "081100000004"},
+        {"aud": "Ani (Auditor Jateng)", "wa_aud": "081100000005", "kt": "Rayhan (Auditor/KT Hybrid)", "wa_kt": "081100000002"},
+        {"aud": "Rayhan (Auditor/KT Hybrid)", "wa_aud": "081100000002", "kt": "Ibu Siti (KT Jateng)", "wa_kt": "081100000004"},
+    ]
+
+    unit_kerjas = ["BO Jakarta", "BO Bandung", "BO Surabaya", "Kanwil Semarang", "BO Solo", "BO Medan", "Kanwil Makassar"]
+    jenis_audits = ["Reguler Audit", "Spesial Audit", "Tematik Audit", "Audit Investigasi"]
     hari_ini = date.today()
-    
-    # Skenario 1: Rayhan bertugas, lapor ke Budi (Masih Masa Auditee - Belum Ditindaklanjuti)
-    for i in range(1, 4):
-        rpm = DataRPM(
-            no_lha=f"LHA/JKT/2026/00{i}", jenis_audit="Reguler Audit", unit_kerja=f"BO Jakarta {i}",
-            deskripsi="Skenario 1: Masih dalam masa pengumpulan dokumen oleh Auditee.",
-            tenggat_waktu=hari_ini + timedelta(days=random.randint(5, 12)),
-            nama_pic="PIC Auditee JKT", wa_auditee="089900000001",
-            nama_auditor="Rayhan (Auditor/KT Hybrid)", wa_auditor="081100000002", # Milik Rayhan
-            nama_ketua_tim="Bapak Budi (KT Jakarta)", wa_ketua_tim="081100000001", # Bermuara ke Budi
-            status="Dalam Pemantauan"
-        )
-        db.session.add(rpm)
 
-    # Skenario 2: Deka bertugas, lapor ke Budi (Sedang Direviu Auditor - SLA 10 Hari Berjalan)
-    for i in range(4, 7):
-        rpm = DataRPM(
-            no_lha=f"LHA/JKT/2026/00{i}", jenis_audit="Spesial Audit", unit_kerja=f"Kanwil Jakarta {i}",
-            deskripsi="Skenario 2: Auditee sudah setor. Deka harus segera klik Beri Keputusan LHA sebelum SLA 10 harinya habis.",
-            tenggat_waktu=hari_ini + timedelta(days=20),
-            nama_pic="PIC Kanwil JKT", wa_auditee="089900000002",
-            nama_auditor="Deka (Auditor Jkt)", wa_auditor="081100000003", # Milik Deka
-            nama_ketua_tim="Bapak Budi (KT Jakarta)", wa_ketua_tim="081100000001", # Bermuara ke Budi
-            status="Sedang Direviu Auditor",
-            tgl_terima_dokumen=hari_ini - timedelta(days=random.randint(1, 8)) # Diterima beberapa hari lalu
-        )
-        db.session.add(rpm)
-
-    # Skenario 3: Ani bertugas, lapor ke Ibu Siti (Auditee Telat & Auditor Telat Reviu)
-    rpm_telat1 = DataRPM(
-        no_lha="LHA/JTG/2026/007", jenis_audit="Tematik Audit", unit_kerja="BO Solo Baru",
-        deskripsi="Skenario 3a: Auditee Telat menyerahkan dokumen.",
-        tenggat_waktu=hari_ini - timedelta(days=5), # Minus 5 hari
-        nama_pic="PIC BO Solo", wa_auditee="089900000003",
-        nama_auditor="Ani (Auditor Jateng)", wa_auditor="081100000005", # Milik Ani
-        nama_ketua_tim="Ibu Siti (KT Jateng)", wa_ketua_tim="081100000004", # Bermuara ke Siti
-        status="Belum Memadai"
-    )
-    db.session.add(rpm_telat1)
-
-    rpm_telat2 = DataRPM(
-        no_lha="LHA/JTG/2026/008", jenis_audit="Tematik Audit", unit_kerja="Kanwil Semarang",
-        deskripsi="Skenario 3b: Auditee tepat waktu, tapi Auditor (Ani) Telat mereviu lebih dari 10 hari.",
-        tenggat_waktu=hari_ini + timedelta(days=30), 
-        nama_pic="PIC Kanwil SMG", wa_auditee="089900000004",
-        nama_auditor="Ani (Auditor Jateng)", wa_auditor="081100000005", # Milik Ani
-        nama_ketua_tim="Ibu Siti (KT Jateng)", wa_ketua_tim="081100000004", # Bermuara ke Siti
-        status="Sedang Direviu Auditor",
-        tgl_terima_dokumen=hari_ini - timedelta(days=12) # Diterima 12 hari lalu (SLA 10 hari jebol)
-    )
-    db.session.add(rpm_telat2)
-
-    # Skenario 4: Ani bertugas, lapor ke Rayhan (Hybrid Mode) - Menunggu Approval KT
-    for i in range(9, 12):
-        rpm = DataRPM(
-            no_lha=f"LHA/HYB/2026/00{i}", jenis_audit="Audit Investigasi", unit_kerja=f"BO Tegal {i}",
-            deskripsi="Skenario 4: Ani sudah mereviu, saat ini bola ada di tangan Rayhan selaku Ketua Tim untuk diapprove.",
-            tenggat_waktu=hari_ini + timedelta(days=15),
-            nama_pic="PIC BO Tegal", wa_auditee="089900000005",
-            nama_auditor="Ani (Auditor Jateng)", wa_auditor="081100000005", # Milik Ani
-            nama_ketua_tim="Rayhan (Auditor/KT Hybrid)", wa_ketua_tim="081100000002", # Bermuara ke RAYHAN
-            status="Dalam Pemantauan", # Status asli
-            status_approval="Menunggu Approval",
-            usulan_status="Memadai", # Usulan Ani
-            file_bukti="Dummy_Bukti.pdf"
-        )
-        db.session.add(rpm)
-
-    # Skenario 5: Tugas Selesai (Budi dan Siti)
-    for i in range(12, 16):
-        rpm = DataRPM(
-            no_lha=f"LHA/DONE/2026/0{i}", jenis_audit="Reguler Audit", unit_kerja=f"Kantor Pusat {i}",
-            deskripsi="Skenario 5: Siklus sudah ditutup (Selesai/Memadai).",
-            tenggat_waktu=hari_ini + timedelta(days=40),
-            nama_pic="PIC KP", wa_auditee="089900000006",
-            nama_auditor="Bapak Budi (KT Jakarta)", wa_auditor="081100000001",
-            nama_ketua_tim="Ibu Siti (KT Jateng)", wa_ketua_tim="081100000004",
-            status="Memadai"
-        )
+    # 3. INJEKSI 30 DATA KASUS
+    for i in range(1, 31):
+        assign = assignments[i % 5] # Distribusi merata ke 5 alur relasi
+        unit = f"{random.choice(unit_kerjas)} {i}"
+        jenis = random.choice(jenis_audits)
+        
+        # Skenario 1 (Kasus 1-5): Dalam Pemantauan (Auditee Aman > 14 Hari)
+        if i <= 5:
+            rpm = DataRPM(
+                no_lha=f"LHA/2026/0{i:02d}", jenis_audit=jenis, unit_kerja=unit,
+                deskripsi=f"Skenario 1: Auditee masih memiliki waktu panjang untuk mengumpulkan dokumen tindak lanjut.",
+                tenggat_waktu=hari_ini + timedelta(days=random.randint(20, 45)),
+                nama_pic=f"PIC {unit}", wa_auditee=f"08990000{i:04d}",
+                nama_auditor=assign['aud'], wa_auditor=assign['wa_aud'],
+                nama_ketua_tim=assign['kt'], wa_ketua_tim=assign['wa_kt'],
+                status="Dalam Pemantauan"
+            )
+            
+        # Skenario 2 (Kasus 6-10): Dalam Pemantauan (Auditee Kritis / Telat)
+        elif i <= 10:
+            rpm = DataRPM(
+                no_lha=f"LHA/2026/0{i:02d}", jenis_audit=jenis, unit_kerja=unit,
+                deskripsi=f"Skenario 2: Auditee memasuki masa kritis atau sudah melewati tenggat waktu.",
+                tenggat_waktu=hari_ini + timedelta(days=random.randint(-10, 10)),
+                nama_pic=f"PIC {unit}", wa_auditee=f"08990000{i:04d}",
+                nama_auditor=assign['aud'], wa_auditor=assign['wa_aud'],
+                nama_ketua_tim=assign['kt'], wa_ketua_tim=assign['wa_kt'],
+                status="Belum Memadai"
+            )
+            
+        # Skenario 3 (Kasus 11-15): Sedang Direviu Auditor (SLA 10 Hari Berjalan Aman)
+        elif i <= 15:
+            rpm = DataRPM(
+                no_lha=f"LHA/2026/0{i:02d}", jenis_audit=jenis, unit_kerja=unit,
+                deskripsi=f"Skenario 3: Dokumen diterima, Auditor sedang mereviu (Argo 10 hari berjalan aman).",
+                tenggat_waktu=hari_ini + timedelta(days=30),
+                nama_pic=f"PIC {unit}", wa_auditee=f"08990000{i:04d}",
+                nama_auditor=assign['aud'], wa_auditor=assign['wa_aud'],
+                nama_ketua_tim=assign['kt'], wa_ketua_tim=assign['wa_kt'],
+                status="Sedang Direviu Auditor",
+                tgl_terima_dokumen=hari_ini - timedelta(days=random.randint(1, 5))
+            )
+            
+        # Skenario 4 (Kasus 16-18): Sedang Direviu Auditor (SLA Auditor Jebol / Telat)
+        elif i <= 18:
+            rpm = DataRPM(
+                no_lha=f"LHA/2026/0{i:02d}", jenis_audit=jenis, unit_kerja=unit,
+                deskripsi=f"Skenario 4: Auditor terlambat mereviu (Sudah lebih dari 10 hari sejak auditee setor dokumen).",
+                tenggat_waktu=hari_ini + timedelta(days=30),
+                nama_pic=f"PIC {unit}", wa_auditee=f"08990000{i:04d}",
+                nama_auditor=assign['aud'], wa_auditor=assign['wa_aud'],
+                nama_ketua_tim=assign['kt'], wa_ketua_tim=assign['wa_kt'],
+                status="Sedang Direviu Auditor",
+                tgl_terima_dokumen=hari_ini - timedelta(days=random.randint(12, 18))
+            )
+            
+        # Skenario 5 (Kasus 19-22): Menunggu Approval Ketua Tim (Keputusan LHA)
+        elif i <= 22:
+            rpm = DataRPM(
+                no_lha=f"LHA/2026/0{i:02d}", jenis_audit=jenis, unit_kerja=unit,
+                deskripsi=f"Skenario 5: Auditor sudah memberikan keputusan LHA, saat ini sedang menunggu persetujuan Ketua Tim di Menu Approval.",
+                tenggat_waktu=hari_ini + timedelta(days=15),
+                nama_pic=f"PIC {unit}", wa_auditee=f"08990000{i:04d}",
+                nama_auditor=assign['aud'], wa_auditor=assign['wa_aud'],
+                nama_ketua_tim=assign['kt'], wa_ketua_tim=assign['wa_kt'],
+                status="Sedang Direviu Auditor",
+                tgl_terima_dokumen=hari_ini - timedelta(days=2),
+                status_approval="Menunggu Approval",
+                usulan_status="Memadai",
+                file_bukti=f"Bukti_Keputusan_{i}.pdf"
+            )
+            
+        # Skenario 6 (Kasus 23-26): Menunggu Approval KT (KESEPAKATAN ULANG BA)
+        elif i <= 26:
+            rpm = DataRPM(
+                no_lha=f"LHA/2026/0{i:02d}", jenis_audit=jenis, unit_kerja=unit,
+                deskripsi=f"Skenario 6: Auditee meminta pengunduran waktu. Auditor mengusulkan perubahan tenggat waktu (Kesepakatan Ulang BA) dan menunggu Approval KT.",
+                tenggat_waktu=hari_ini - timedelta(days=5), 
+                nama_pic=f"PIC {unit}", wa_auditee=f"08990000{i:04d}",
+                nama_auditor=assign['aud'], wa_auditor=assign['wa_aud'],
+                nama_ketua_tim=assign['kt'], wa_ketua_tim=assign['wa_kt'],
+                status="Belum Memadai",
+                status_approval="Menunggu Approval",
+                usulan_status="Belum Memadai", # Status utama tidak berubah
+                usulan_tenggat=hari_ini + timedelta(days=45), # Diundur 45 hari ke depan
+                no_ba_kesepakatan=f"BA/EXT/{i:02d}/2026",
+                tgl_ba_kesepakatan=hari_ini - timedelta(days=1),
+                file_ba_kesepakatan=f"File_Berita_Acara_{i}.pdf"
+            )
+            
+        # Skenario 7 (Kasus 27-30): Selesai / Memadai
+        else:
+            rpm = DataRPM(
+                no_lha=f"LHA/2026/0{i:02d}", jenis_audit=jenis, unit_kerja=unit,
+                deskripsi=f"Skenario 7: Proses tindak lanjut selesai sepenuhnya dan telah disetujui Ketua Tim.",
+                tenggat_waktu=hari_ini + timedelta(days=40),
+                nama_pic=f"PIC {unit}", wa_auditee=f"08990000{i:04d}",
+                nama_auditor=assign['aud'], wa_auditor=assign['wa_aud'],
+                nama_ketua_tim=assign['kt'], wa_ketua_tim=assign['wa_kt'],
+                status="Memadai"
+            )
+            
         db.session.add(rpm)
 
     db.session.commit()
-    print("✅ 15 Data Kasus RPM dengan berbagai variasi status berhasil disuntikkan.")
-    print("🎉 PROSES HARD RESET SELESAI. SILAKAN LOGIN DENGAN PN!")
+    print("✅ 30 Data Kasus RPM dengan berbagai variasi status dan BA berhasil disuntikkan.")
+    print("🎉 PROSES HARD RESET SELESAI. SILAKAN LOGIN MENGGUNAKAN PN!")
