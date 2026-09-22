@@ -16,7 +16,7 @@
     </style>
 </head>
 <body>
-    <!-- Navbar Bersih & Seragam untuk Semua Pegawai -->
+    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-5 shadow-sm">
         <div class="container-fluid px-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
@@ -55,22 +55,25 @@
                     <p class="fw-bold text-muted mb-0">TOTAL SELURUH RPM</p>
                 </div>
             </div>
+            
+            <div class="col-md-3">
+                <div class="card card-summary shadow-sm py-4 border-danger" style="border-bottom-color: #dc3545 !important;">
+                    <h1 class="fw-bold text-danger display-4">{{ pemantauan }}</h1>
+                    <p class="fw-bold text-muted mb-0">DOMAIN AUDITEE<br><span class="small">(Dalam Pemantauan)</span></p>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card card-summary shadow-sm py-4 border-info" style="border-bottom-color: #0dcaf0 !important;">
+                    <h1 class="fw-bold text-info display-4">{{ reviu }}</h1>
+                    <p class="fw-bold text-muted mb-0">DOMAIN AUDITOR<br><span class="small">(Sedang Direviu Internal)</span></p>
+                </div>
+            </div>
+
             <div class="col-md-3">
                 <div class="card card-summary shadow-sm py-4 border-success" style="border-bottom-color: #198754 !important;">
                     <h1 class="fw-bold text-success display-4">{{ selesai }}</h1>
-                    <p class="fw-bold text-muted mb-0">RPM SELESAI (MEMADAI)</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card card-summary shadow-sm py-4 border-warning" style="border-bottom-color: #ffc107 !important;">
-                    <h1 class="fw-bold text-warning display-4">{{ proses }}</h1>
-                    <p class="fw-bold text-muted mb-0 text-uppercase">Proses / Aman (>14 Hari)</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card card-summary shadow-sm py-4 border-danger" style="border-bottom-color: #dc3545 !important;">
-                    <h1 class="fw-bold text-danger display-4">{{ kritis }}</h1>
-                    <p class="fw-bold text-muted mb-0 text-uppercase">Kritis / Terlewat (≤14 Hari)</p>
+                    <p class="fw-bold text-muted mb-0">RPM SELESAI<br><span class="small">(Memadai)</span></p>
                 </div>
             </div>
         </div>
