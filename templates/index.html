@@ -90,15 +90,19 @@
                             <option value="aman">Aman (> 14 Hari)</option>
                         </select>
                     </div>
+                    
+                    <!-- FILTER STATUS TERBARU -->
                     <div class="col-md-2">
                         <label class="form-label text-muted fw-bold small">Status</label>
                         <select id="f_status" class="form-select form-select-sm border-primary filter-input">
                             <option value="">Semua Status</option>
                             <option value="Dalam Pemantauan">Dalam Pemantauan</option>
+                            <option value="Sedang Direviu Auditor">Sedang Direviu Auditor</option>
                             <option value="Belum Memadai">Belum Memadai</option>
                             <option value="Memadai">Memadai</option>
                         </select>
                     </div>
+                    
                     <div class="col-md-2">
                         <label class="form-label text-muted fw-bold small">Kesepakatan (BA)</label>
                         <select id="f_ba" class="form-select form-select-sm border-primary filter-input">
@@ -156,7 +160,6 @@
                             {% set text_sisa = "Tugas Selesai" %}
                         {% endif %}
 
-                        <!-- Class filter-row dikembalikan ke sini agar Filter JS berfungsi -->
                         <tr class="clickable-row filter-row {{ row_class }}"
                             data-lha="{{ item.no_lha|lower }}" data-unit="{{ item.unit_kerja|lower }}"
                             data-sisa="{{ item.sisa_hari }}" data-status="{{ item.status }}"
@@ -181,17 +184,18 @@
                             </td>
                             <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.nama_auditor }}</td>
                             
+                            <!-- KONTROL TOMBOL PANEL AUDITOR -->
                             <td class="text-center">
                                 {% if session['no_wa'] == item.wa_auditor %}
                                 
                                     {% if item.status == 'Dalam Pemantauan' or item.status == 'Belum Memadai' %}
-                                        <form action="/terima_dokumen/{{ item.id }}" method="POST" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-primary bg-nusantara fw-bold text-white d-block mb-1 w-100" onclick="return confirm('Auditee telah menyetorkan dokumen? Klik OK untuk memulai Argo 10 Hari Reviu.');">Terima Dokumen (Mulai Reviu)</button>
-                                        </form>
+                                        <!-- Tombol Pintu Masuk Modal Tindak Lanjut -->
+                                        <button class="btn btn-sm btn-primary bg-nusantara fw-bold text-white d-block mb-1 w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTindakLanjut{{ item.id }}">Tindak Lanjut</button>
                                         <button class="btn btn-sm btn-danger fw-bold text-white d-block w-100" data-bs-toggle="modal" data-bs-target="#modalDeleteRpm{{ item.id }}">Hapus RPM</button>
                                         
                                     {% elif item.status == 'Sedang Direviu Auditor' %}
-                                        <a href="/edit/{{ item.id }}" class="btn btn-sm bg-success fw-bold text-white d-block mb-1 w-100">Beri Keputusan LHA</a>
+                                        <!-- Jika sudah direviu, tombol berubah otomatis -->
+                                        <a href="/edit/{{ item.id }}" class="btn btn-sm bg-success fw-bold text-white d-block mb-1 w-100 shadow-sm">Beri Keputusan LHA</a>
                                         
                                     {% else %}
                                         <span class="badge bg-secondary w-100 p-2">Terkunci / Selesai</span>
@@ -212,8 +216,79 @@
         </div>
     </div>
 
-    <!-- SEMUA MODAL DETAIL (Dikembalikan dengan lengkap) -->
+    <!-- SEMUA MODAL -->
     {% for item in data %}
+    
+    <!-- 1. MODAL TINDAK LANJUT (TERIMA DOKUMEN vs KESEPAKATAN ULANG) -->
+    <div class="modal fade" id="modalTindakLanjut{{ item.id }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0">
+                <div class="modal-header bg-nusantara text-white">
+                    <h5 class="modal-title fw-bold">Opsi Tindak Lanjut: {{ item.unit_kerja }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Nav tabs -->
+                    <ul class="nav nav-tabs mb-3" id="myTab{{ item.id }}" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold text-primary" id="terima-tab{{ item.id }}" data-bs-toggle="tab" data-bs-target="#terima{{ item.id }}" type="button" role="tab">Terima Dokumen</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold text-danger" id="ba-tab{{ item.id }}" data-bs-toggle="tab" data-bs-target="#ba{{ item.id }}" type="button" role="tab">Kesepakatan Ulang</button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                        <!-- TAB A: Terima Dokumen -->
+                        <div class="tab-pane fade show active" id="terima{{ item.id }}" role="tabpanel">
+                            <form action="/proses_tindak_lanjut/{{ item.id }}" method="POST">
+                                <input type="hidden" name="jenis_tindakan" value="terima_dokumen">
+                                <p class="text-dark">Dengan ini Anda mengonfirmasi bahwa Auditee telah menyetorkan dokumen tindak lanjut.</p>
+                                <div class="alert alert-info py-2 small">
+                                    <strong>Info:</strong> Menekan tombol di bawah akan menghentikan argo Auditee dan <strong>memulai argo SLA 10 Hari Auditor</strong>. Status RPM akan berubah menjadi "Sedang Direviu Auditor".
+                                </div>
+                                <button type="submit" class="btn btn-primary bg-nusantara fw-bold w-100">Mulai Reviu (Argo 10 Hari)</button>
+                            </form>
+                        </div>
+                        
+                        <!-- TAB B: Kesepakatan Ulang (Butuh Approval) -->
+                        <div class="tab-pane fade" id="ba{{ item.id }}" role="tabpanel">
+                            <form action="/proses_tindak_lanjut/{{ item.id }}" method="POST" enctype="multipart/form-data">
+                                <input type="hidden" name="jenis_tindakan" value="kesepakatan_ulang">
+                                <p class="text-muted small mb-3">Tindakan ini membutuhkan validasi dari Ketua Tim Audit.</p>
+                                
+                                <div class="mb-2">
+                                    <label class="fw-bold small text-nusantara">Tenggat Waktu Baru</label>
+                                    <input type="date" class="form-control border-primary" name="tenggat_waktu" required>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="fw-bold small text-nusantara">Nomor Berita Acara (BA)</label>
+                                    <input type="text" class="form-control border-primary" name="no_ba" required placeholder="Contoh: BA/01/2026">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="fw-bold small text-nusantara">Tanggal BA Kesepakatan</label>
+                                    <input type="date" class="form-control border-primary" name="tgl_ba" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="fw-bold small text-nusantara">Unggah File BA (PDF/JPG)</label>
+                                    <input type="file" class="form-control border-primary" name="file_ba" required>
+                                </div>
+                                <hr>
+                                <div class="mb-3">
+                                    <label class="fw-bold text-danger small">Otorisasi (Password Akun Anda)</label>
+                                    <input type="password" class="form-control border-danger" name="password_otorisasi" required placeholder="Ketik sandi Anda di sini">
+                                </div>
+                                <button type="submit" class="btn btn-danger fw-bold w-100 shadow-sm">Kirim Usulan Kesepakatan ke Ketua Tim</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MODAL DETAIL -->
     <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0">
@@ -231,7 +306,6 @@
                 <tr><td>Ketua Tim Audit:</td><td><strong>{{ item.nama_ketua_tim }}</strong></td></tr>
             </table>
 
-            <!-- BAGIAN INI DIKEMBALIKAN: Kontak Auditee -->
             <h6 class="fw-bold text-nusantara mt-3">Kontak Unit Kerja (Auditee):</h6>
             <table class="table table-sm text-dark mb-3">
                 <tr><td style="width: 40%">Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr>
@@ -245,7 +319,6 @@
             </div>
             {% endif %}
 
-            <!-- BAGIAN INI DIKEMBALIKAN: Riwayat Berita Acara (BA) -->
             {% if item.no_ba_kesepakatan %}
             <h6 class="fw-bold text-nusantara mt-3">Riwayat Kesepakatan Ulang (BA):</h6>
             <div class="border border-warning p-2 rounded bg-light text-dark">
@@ -255,13 +328,12 @@
                 {% endif %}
             </div>
             {% endif %}
-
             </div>
         </div>
         </div>
     </div>
 
-    <!-- Modal Delete -->
+    <!-- 3. MODAL HAPUS -->
     <div class="modal fade" id="modalDeleteRpm{{ item.id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 border-top border-4 border-danger">
@@ -284,7 +356,7 @@
     </div>
     {% endfor %}
 
-    <!-- Script JavaScript Filter (Dikembalikan) -->
+    <!-- Script JavaScript Filter -->
     <script>
         function applyFilters() {
             let myWa = "{{ session['no_wa'] }}";
