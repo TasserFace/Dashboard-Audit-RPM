@@ -2,6 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- PENTING UNTUK MOBILE -->
     <title>Monitoring RPM</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -11,24 +12,28 @@
         .bg-cakrawala { background-color: #307FE2 !important; }
         .text-nusantara { color: #0857C3 !important; }
         .text-mentari { color: #71C5E8 !important; }
-        .table-header { color: #0857C3 !important; font-weight: bold; border-bottom: 2px solid #0857C3; }
+        .table-header { color: #0857C3 !important; font-weight: bold; border-bottom: 2px solid #0857C3; white-space: nowrap; }
         .clickable-row { cursor: pointer; transition: background-color 0.2s; }
         .clickable-row:hover { background-color: #e9ecef !important; }
         .badge-notif { font-size: 0.85em; transform: translateY(-2px); margin-left: 5px; }
         
-        /* Kustomisasi Tab Navigasi */
-        .nav-pills .nav-link { color: #0857C3; border: 1px solid #0857C3; margin-right: 10px; border-radius: 8px; }
+        /* Kustomisasi Tab Navigasi & Mobile Fix */
+        .nav-pills .nav-link { color: #0857C3; border: 1px solid #0857C3; border-radius: 8px; text-align: center; }
         .nav-pills .nav-link:hover { background-color: #e9ecef; }
         .nav-pills .nav-link.active { background-color: #0857C3; color: white; border-color: #0857C3; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .table > tbody > tr > td { vertical-align: middle; }
     </style>
 </head>
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
-        <div class="container-fluid px-4">
+        <div class="container-fluid px-3 px-md-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 mt-3 mt-lg-0">
                     <li class="nav-item"><a class="nav-link text-white" href="/">Ringkasan</a></li>
                     <li class="nav-item"><a class="nav-link active text-mentari fw-bold" href="/monitoring">Monitoring RPM</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="/input">Tambah RPM</a></li>
@@ -36,72 +41,66 @@
                         <a class="nav-link text-white d-flex align-items-center" href="/approval">
                             Menu Approval 
                             {% if pending_count > 0 %}
-                            <span class="badge bg-warning text-dark rounded-pill badge-notif fw-bold">🔔 {{ pending_count }}</span>
+                            <span class="badge bg-warning text-dark rounded-pill badge-notif fw-bold ms-1">🔔 {{ pending_count }}</span>
                             {% else %}
-                            <span class="badge bg-secondary rounded-pill badge-notif">🔔 0</span>
+                            <span class="badge bg-secondary rounded-pill badge-notif ms-1">🔔 0</span>
                             {% endif %}
                         </a>
                     </li>
                 </ul>
-                <div class="d-flex text-white align-items-center ms-auto">
-                    <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
-                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
+                <div class="d-flex flex-column flex-lg-row text-white align-items-lg-center mt-3 mt-lg-0">
+                    <span class="me-lg-3 mb-2 mb-lg-0 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
+                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold w-100 w-lg-auto">Logout</a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container-fluid px-4">
+    <div class="container-fluid px-3 px-md-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
         
-        <h4 class="fw-bold mb-4 text-nusantara">Daftar Rencana Perbaikan Manajemen</h4>
+        <h4 class="fw-bold mb-4 text-nusantara text-center text-md-start">Daftar Rencana Perbaikan Manajemen</h4>
 
-        <!-- NAV TABS (Pemisahan UI/UX) -->
-        <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+        <!-- NAV TABS MOBILE-FRIENDLY (Bersusun di HP) -->
+        <ul class="nav nav-pills flex-column flex-md-row mb-4 gap-2" id="pills-tab" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active fw-bold px-4 py-2" id="pills-tugas-tab" data-bs-toggle="pill" data-bs-target="#pills-tugas" type="button" role="tab">📋 Tugas & Tanggung Jawab Saya</button>
+                <button class="nav-link active fw-bold px-4 py-2 w-100" id="pills-tugas-tab" data-bs-toggle="pill" data-bs-target="#pills-tugas" type="button" role="tab">📋 Tugas Saya</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold px-4 py-2" id="pills-semua-tab" data-bs-toggle="pill" data-bs-target="#pills-semua" type="button" role="tab">🌐 Monitoring Keseluruhan</button>
+                <button class="nav-link fw-bold px-4 py-2 w-100" id="pills-semua-tab" data-bs-toggle="pill" data-bs-target="#pills-semua" type="button" role="tab">🌐 Monitoring Keseluruhan</button>
             </li>
         </ul>
 
         <div class="tab-content" id="pills-tabContent">
             
-            <!-- ========================================== -->
-            <!-- TAB 1: TUGAS SAYA (Actionable & Personal)  -->
-            <!-- ========================================== -->
+            <!-- TAB 1: TUGAS SAYA -->
             <div class="tab-pane fade show active" id="pills-tugas" role="tabpanel">
                 
-                <!-- Filter Tab 1 -->
-                <div class="d-flex justify-content-end mb-3">
-                    <input type="text" id="searchInput1" class="form-control border-primary shadow-sm w-25 me-2 filter-input-1" placeholder="🔍 Cari Cepat LHA / Unit...">
+                <div class="d-flex flex-column flex-md-row justify-content-end mb-3 gap-2">
+                    <input type="text" id="searchInput1" class="form-control border-primary shadow-sm w-100 w-md-25 filter-input-1" placeholder="🔍 Cari LHA / Unit...">
                 </div>
                 
                 <div class="card card-body shadow-sm border-0 border-start border-4 border-primary bg-white mb-4">
-                    <h6 class="fw-bold text-nusantara mb-3">Filter Status Pekerjaan Saya</h6>
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <select id="f_status1" class="form-select form-select-sm border-primary filter-input-1 fw-bold text-primary">
-                                <option value="semua">Semua Tugas Saya</option>
-                                <option value="belum_ditindaklanjuti">🔴 Belum Ditindaklanjuti (Masa Auditee)</option>
-                                <option value="menunggu_keputusan">🔵 Menunggu Keputusan LHA (Masa Reviu Anda)</option>
-                                <option value="selesai">🟢 Selesai / Menunggu Approval KT</option>
-                            </select>
-                        </div>
-                    </div>
+                    <h6 class="fw-bold text-nusantara mb-2">Filter Status Pekerjaan Saya</h6>
+                    <select id="f_status1" class="form-select border-primary filter-input-1 fw-bold text-primary w-100 w-md-50">
+                        <option value="semua">Semua Tugas Saya</option>
+                        <option value="belum_ditindaklanjuti">🔴 Belum Ditindaklanjuti (Masa Auditee)</option>
+                        <option value="menunggu_keputusan">🔵 Menunggu Keputusan LHA (Masa Reviu Anda)</option>
+                        <option value="selesai">🟢 Selesai / Menunggu Approval KT</option>
+                    </select>
                 </div>
 
+                <!-- TABLE RESPONSIVE WRAPPER (PENTING UNTUK MOBILE) -->
                 <div class="card shadow-sm border-0 mb-5">
-                    <div class="card-body p-0">
-                        <table class="table align-middle mb-0 text-nusantara bg-white">
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table align-middle mb-0 text-nusantara bg-white" style="min-width: 800px;">
                             <thead>
                                 <tr>
                                     <th class="table-header">No. LHA</th>
                                     <th class="table-header">Unit Kerja</th>
-                                    <th class="table-header">Tenggat Waktu</th>
+                                    <th class="table-header">Tenggat</th>
                                     <th class="table-header">Sisa Waktu & Argo</th>
                                     <th class="table-header text-dark">Status Proses</th>
                                     <th class="table-header text-center">Aksi Lanjutan</th>
@@ -124,7 +123,7 @@
                                 {% elif item.status == 'Sedang Direviu Auditor' %}
                                     {% if item.sisa_hari < 0 %}
                                         {% set row_class = "table-warning" %}
-                                        {% set text_sisa = "Lewat " ~ item.sisa_hari|abs ~ " Hari (Anda Telat Reviu)" %}
+                                        {% set text_sisa = "Lewat " ~ item.sisa_hari|abs ~ " Hari (Anda Telat)" %}
                                     {% else %}
                                         {% set row_class = "table-info" %}
                                         {% set text_sisa = item.sisa_hari ~ " Hari (SLA Reviu Anda)" %}
@@ -140,30 +139,27 @@
                                     {% set filter_stat = "selesai" %}
                                 {% endif %}
 
-                                <tr class="clickable-row filter-row-1 {{ row_class }}" 
-                                    data-search="{{ item.no_lha|lower }} {{ item.unit_kerja|lower }}"
-                                    data-stat="{{ filter_stat }}">
-                                    
+                                <tr class="clickable-row filter-row-1 {{ row_class }}" data-search="{{ item.no_lha|lower }} {{ item.unit_kerja|lower }}" data-stat="{{ filter_stat }}">
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.no_lha }}</strong></td>
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.unit_kerja }}</td>
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">
-                                        {% if filter_stat == 'selesai' %}<span class="text-success fw-bold">Selesai/Diproses KT</span>
+                                        {% if filter_stat == 'selesai' %}<span class="text-success fw-bold">Selesai/Proses KT</span>
                                         {% elif item.sisa_hari < 0 %}<span class="text-danger fw-bold">{{ text_sisa }}</span>
                                         {% else %}<span class="fw-bold text-nusantara">{{ text_sisa }}</span>{% endif %}
                                     </td>
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">
                                         <span class="badge {% if filter_stat == 'selesai' %} bg-success {% elif item.status == 'Sedang Direviu Auditor' %} bg-info text-dark {% elif item.status == 'Belum Memadai' %} bg-danger {% else %} bg-warning text-dark {% endif %}">{{ item.status }}</span>
-                                        {% if item.status_approval == 'Menunggu Approval' %}<br><span class="badge bg-secondary mt-1">⏳ Menunggu Persetujuan KT</span>{% endif %}
+                                        {% if item.status_approval == 'Menunggu Approval' %}<br><span class="badge bg-secondary mt-1">⏳ Menunggu KT</span>{% endif %}
                                     </td>
-                                    <td class="text-center">
+                                    <td class="text-center" style="white-space: nowrap;">
                                         {% if filter_stat == 'belum_ditindaklanjuti' %}
-                                            <button class="btn btn-sm btn-primary bg-nusantara fw-bold text-white d-block mb-1 w-100 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTindakLanjut{{ item.id }}">Tindak Lanjut</button>
-                                            <button class="btn btn-sm btn-danger fw-bold text-white d-block w-100" data-bs-toggle="modal" data-bs-target="#modalDeleteRpm{{ item.id }}">Hapus RPM</button>
+                                            <button class="btn btn-sm btn-primary bg-nusantara fw-bold text-white mb-1 shadow-sm w-100" data-bs-toggle="modal" data-bs-target="#modalTindakLanjut{{ item.id }}">Tindak Lanjut</button>
+                                            <button class="btn btn-sm btn-danger fw-bold text-white w-100" data-bs-toggle="modal" data-bs-target="#modalDeleteRpm{{ item.id }}">Hapus</button>
                                         {% elif filter_stat == 'menunggu_keputusan' %}
-                                            <a href="/edit/{{ item.id }}" class="btn btn-sm bg-success fw-bold text-white d-block mb-1 w-100 shadow-sm">Beri Keputusan LHA</a>
+                                            <a href="/edit/{{ item.id }}" class="btn btn-sm bg-success fw-bold text-white w-100 shadow-sm">Beri Keputusan LHA</a>
                                         {% else %}
-                                            <span class="badge bg-secondary w-100 p-2">Terkunci / Menunggu KT</span>
+                                            <span class="badge bg-secondary w-100 p-2">Terkunci / KT</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -176,24 +172,21 @@
                 </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- TAB 2: MONITORING KESELURUHAN (Read-Only)  -->
-            <!-- ========================================== -->
+            <!-- TAB 2: MONITORING KESELURUHAN -->
             <div class="tab-pane fade" id="pills-semua" role="tabpanel">
-                
-                <div class="d-flex justify-content-end mb-3">
-                    <input type="text" id="searchInput2" class="form-control border-primary shadow-sm w-25 me-2 filter-input-2" placeholder="🔍 Cari Cepat...">
-                    <button class="btn btn-primary fw-bold shadow-sm bg-nusantara" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel2">⚙️ Filter Spesifik</button>
+                <div class="d-flex flex-column flex-md-row justify-content-end mb-3 gap-2">
+                    <input type="text" id="searchInput2" class="form-control border-primary shadow-sm w-100 w-md-25 filter-input-2" placeholder="🔍 Cari Cepat...">
+                    <button class="btn btn-primary fw-bold shadow-sm bg-nusantara w-100 w-md-auto" type="button" data-bs-toggle="collapse" data-bs-target="#filterPanel2">⚙️ Filter Spesifik</button>
                 </div>
 
                 <div class="collapse mb-4" id="filterPanel2">
                     <div class="card card-body shadow-sm border-0 border-start border-4 border-primary bg-white">
                         <h6 class="fw-bold text-nusantara mb-3">Filter Pencarian Detail</h6>
                         <div class="row g-3">
-                            <div class="col-md-2"><label class="form-label text-muted fw-bold small">Nomor LHA</label><input type="text" id="f_lha2" class="form-control form-control-sm border-primary filter-input-2"></div>
-                            <div class="col-md-2"><label class="form-label text-muted fw-bold small">Unit Kerja</label><input type="text" id="f_unit2" class="form-control form-control-sm border-primary filter-input-2"></div>
-                            <div class="col-md-3"><label class="form-label text-muted fw-bold small">Auditor / PIC</label><input type="text" id="f_auditor2" class="form-control form-control-sm border-primary filter-input-2" placeholder="Nama Auditor..."></div>
-                            <div class="col-md-2">
+                            <div class="col-12 col-md-3"><label class="form-label text-muted fw-bold small">Nomor LHA</label><input type="text" id="f_lha2" class="form-control form-control-sm border-primary filter-input-2"></div>
+                            <div class="col-12 col-md-3"><label class="form-label text-muted fw-bold small">Unit Kerja</label><input type="text" id="f_unit2" class="form-control form-control-sm border-primary filter-input-2"></div>
+                            <div class="col-12 col-md-3"><label class="form-label text-muted fw-bold small">Auditor / PIC</label><input type="text" id="f_auditor2" class="form-control form-control-sm border-primary filter-input-2" placeholder="Nama Auditor..."></div>
+                            <div class="col-12 col-md-3">
                                 <label class="form-label text-muted fw-bold small">Status</label>
                                 <select id="f_status2" class="form-select form-select-sm border-primary filter-input-2">
                                     <option value="">Semua Status</option>
@@ -204,18 +197,19 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="mt-3 text-end"><button type="button" id="btnResetFilter2" class="btn btn-sm btn-outline-secondary fw-bold">Reset Filter</button></div>
+                        <div class="mt-3 text-end"><button type="button" id="btnResetFilter2" class="btn btn-sm btn-outline-secondary fw-bold w-100 w-md-auto">Reset Filter</button></div>
                     </div>
                 </div>
 
+                <!-- TABLE RESPONSIVE WRAPPER (PENTING UNTUK MOBILE) -->
                 <div class="card shadow-sm border-0 mb-5">
-                    <div class="card-body p-0">
-                        <table class="table align-middle mb-0 text-nusantara bg-white opacity-75">
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table align-middle mb-0 text-nusantara bg-white opacity-75" style="min-width: 800px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th class="table-header">No. LHA</th>
                                     <th class="table-header">Unit Kerja</th>
-                                    <th class="table-header">Tenggat Waktu</th>
+                                    <th class="table-header">Tenggat</th>
                                     <th class="table-header">Sisa Waktu</th>
                                     <th class="table-header">Auditor (PIC)</th>
                                     <th class="table-header text-center">Aksi</th>
@@ -223,20 +217,10 @@
                             </thead>
                             <tbody>
                                 {% for item in data %}
-                                
                                 {% set row_class = "" %}
-                                {% if item.status == 'Dalam Pemantauan' or item.status == 'Belum Memadai' %}
-                                    {% if item.sisa_hari <= 14 %}{% set row_class = "table-danger" %}{% endif %}
-                                {% elif item.status == 'Sedang Direviu Auditor' %}
-                                    {% if item.sisa_hari < 0 %}{% set row_class = "table-warning" %}{% else %}{% set row_class = "table-info" %}{% endif %}
-                                {% elif item.status_approval == 'Menunggu Approval' %}
-                                    {% set row_class = "table-secondary" %}
-                                {% endif %}
+                                {% if item.status == 'Dalam Pemantauan' or item.status == 'Belum Memadai' %}{% if item.sisa_hari <= 14 %}{% set row_class = "table-danger" %}{% endif %}{% elif item.status == 'Sedang Direviu Auditor' %}{% if item.sisa_hari < 0 %}{% set row_class = "table-warning" %}{% else %}{% set row_class = "table-info" %}{% endif %}{% elif item.status_approval == 'Menunggu Approval' %}{% set row_class = "table-secondary" %}{% endif %}
 
-                                <tr class="clickable-row filter-row-2 {{ row_class }}"
-                                    data-lha="{{ item.no_lha|lower }}" data-unit="{{ item.unit_kerja|lower }}"
-                                    data-status="{{ item.status }}" data-auditor="{{ item.nama_auditor|lower }}" data-search="{{ item.no_lha|lower }} {{ item.unit_kerja|lower }}">
-                                    
+                                <tr class="clickable-row filter-row-2 {{ row_class }}" data-lha="{{ item.no_lha|lower }}" data-unit="{{ item.unit_kerja|lower }}" data-status="{{ item.status }}" data-auditor="{{ item.nama_auditor|lower }}" data-search="{{ item.no_lha|lower }} {{ item.unit_kerja|lower }}">
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.no_lha }}</strong></td>
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.unit_kerja }}</td>
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}">{{ item.tenggat_waktu.strftime('%d-%m-%Y') }}</td>
@@ -246,9 +230,7 @@
                                         {% else %}<span class="fw-bold text-nusantara">{{ item.sisa_hari }} Hari</span>{% endif %}
                                     </td>
                                     <td data-bs-toggle="modal" data-bs-target="#modalDetail{{ item.id }}"><strong>{{ item.nama_auditor }}</strong></td>
-                                    <td class="text-center">
-                                        <span class="badge bg-light text-secondary border p-2 w-100">👁️ Hanya Monitor</span>
-                                    </td>
+                                    <td class="text-center"><span class="badge bg-light text-secondary border p-2 w-100 text-nowrap">👁️ Hanya Monitor</span></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -257,45 +239,42 @@
                     </div>
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- SEMUA MODAL PENDUKUNG (Detail, Tindak Lanjut, Hapus) -->
+    <!-- MODAL (Modal bawaan Bootstrap sudah otomatis responsive di mobile) -->
     {% for item in data %}
-    
     <!-- Modal 1: Opsi Tindak Lanjut -->
     <div class="modal fade" id="modalTindakLanjut{{ item.id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0">
                 <div class="modal-header bg-nusantara text-white">
-                    <h5 class="modal-title fw-bold">Opsi Tindak Lanjut: {{ item.unit_kerja }}</h5>
+                    <h5 class="modal-title fw-bold">Tindak Lanjut</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <ul class="nav nav-tabs mb-3" role="tablist">
-                        <li class="nav-item"><button class="nav-link active fw-bold text-primary" data-bs-toggle="tab" data-bs-target="#terima{{ item.id }}" type="button">Terima Dokumen</button></li>
-                        <li class="nav-item"><button class="nav-link fw-bold text-danger" data-bs-toggle="tab" data-bs-target="#ba{{ item.id }}" type="button">Kesepakatan Ulang</button></li>
+                    <ul class="nav nav-tabs mb-3 flex-column flex-sm-row" role="tablist">
+                        <li class="nav-item mb-2 mb-sm-0"><button class="nav-link active fw-bold text-primary w-100" data-bs-toggle="tab" data-bs-target="#terima{{ item.id }}" type="button">Terima Dokumen</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold text-danger w-100" data-bs-toggle="tab" data-bs-target="#ba{{ item.id }}" type="button">Kesepakatan Ulang</button></li>
                     </ul>
                     <div class="tab-content">
                         <div class="tab-pane fade show active" id="terima{{ item.id }}">
                             <form action="/proses_tindak_lanjut/{{ item.id }}" method="POST">
                                 <input type="hidden" name="jenis_tindakan" value="terima_dokumen">
-                                <p class="text-dark">Dengan ini Anda mengonfirmasi bahwa Auditee telah menyetorkan dokumen tindak lanjut.</p>
+                                <p class="text-dark small">Konfirmasi bahwa Auditee telah menyetorkan dokumen tindak lanjut.</p>
                                 <button type="submit" class="btn btn-primary bg-nusantara fw-bold w-100 mt-2">Mulai Reviu (Argo 10 Hari)</button>
                             </form>
                         </div>
                         <div class="tab-pane fade" id="ba{{ item.id }}">
                             <form action="/proses_tindak_lanjut/{{ item.id }}" method="POST" enctype="multipart/form-data">
                                 <input type="hidden" name="jenis_tindakan" value="kesepakatan_ulang">
-                                <p class="text-muted small mb-3">Tindakan ini membutuhkan validasi dari Ketua Tim Audit.</p>
                                 <div class="mb-2"><label class="fw-bold small text-nusantara">Tenggat Waktu Baru</label><input type="date" class="form-control border-primary" name="tenggat_waktu" required></div>
-                                <div class="mb-2"><label class="fw-bold small text-nusantara">Nomor Berita Acara (BA)</label><input type="text" class="form-control border-primary" name="no_ba" required></div>
-                                <div class="mb-2"><label class="fw-bold small text-nusantara">Tanggal BA Kesepakatan</label><input type="date" class="form-control border-primary" name="tgl_ba" required></div>
-                                <div class="mb-3"><label class="fw-bold small text-nusantara">Unggah File BA (PDF/JPG)</label><input type="file" class="form-control border-primary" name="file_ba" required></div>
+                                <div class="mb-2"><label class="fw-bold small text-nusantara">Nomor BA</label><input type="text" class="form-control border-primary" name="no_ba" required></div>
+                                <div class="mb-2"><label class="fw-bold small text-nusantara">Tanggal BA</label><input type="date" class="form-control border-primary" name="tgl_ba" required></div>
+                                <div class="mb-3"><label class="fw-bold small text-nusantara">Unggah File BA</label><input type="file" class="form-control border-primary" name="file_ba" required></div>
                                 <hr>
-                                <div class="mb-3"><label class="fw-bold text-danger small">Otorisasi (Password Akun Anda)</label><input type="password" class="form-control border-danger" name="password_otorisasi" required></div>
-                                <button type="submit" class="btn btn-danger fw-bold w-100">Kirim Usulan Kesepakatan ke Ketua Tim</button>
+                                <div class="mb-3"><label class="fw-bold text-danger small">Password Akun Anda</label><input type="password" class="form-control border-danger" name="password_otorisasi" required></div>
+                                <button type="submit" class="btn btn-danger fw-bold w-100">Kirim Usulan ke Ketua Tim</button>
                             </form>
                         </div>
                     </div>
@@ -304,114 +283,29 @@
         </div>
     </div>
 
-    <!-- Modal 2: Detail LHA -->
-    <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0">
-            <div class="modal-header bg-cakrawala text-white">
-            <h5 class="modal-title fw-bold">Rincian LHA: {{ item.no_lha }}</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-            <p class="text-dark mb-1"><strong>Unit Kerja:</strong> {{ item.unit_kerja }} ({{ item.jenis_audit }})</p>
-            <p class="border border-info p-2 rounded bg-light text-dark mb-3 mt-2">{{ item.deskripsi }}</p>
-            <h6 class="fw-bold text-nusantara mt-3">Penanggung Jawab Internal:</h6>
-            <table class="table table-sm text-dark mb-3"><tr><td style="width: 40%">Nama Auditor:</td><td><strong>{{ item.nama_auditor }}</strong></td></tr><tr><td>Ketua Tim Audit:</td><td><strong>{{ item.nama_ketua_tim }}</strong></td></tr></table>
-            <h6 class="fw-bold text-nusantara mt-3">Kontak Unit Kerja (Auditee):</h6>
-            <table class="table table-sm text-dark mb-3"><tr><td style="width: 40%">Nama PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr><tr><td>No. WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr></table>
-            {% if item.tgl_terima_dokumen %}<div class="alert alert-info py-2 my-3"><span class="fw-bold small">Info SLA Auditor:</span><br>Dokumen diterima pada <strong>{{ item.tgl_terima_dokumen.strftime('%d-%m-%Y') }}</strong>.</div>{% endif %}
-            {% if item.no_ba_kesepakatan %}<div class="border border-warning p-2 rounded bg-light text-dark"><p class="mb-1"><strong>No. BA:</strong> {{ item.no_ba_kesepakatan }} (Tgl: {{ item.tgl_ba_kesepakatan.strftime('%d-%m-%Y') }})</p>{% if item.file_ba_kesepakatan %}<a href="/uploads/{{ item.file_ba_kesepakatan }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold mt-1">Lihat Dokumen BA</a>{% endif %}</div>{% endif %}
-            </div>
-        </div>
-        </div>
-    </div>
-
-    <!-- Modal 3: Hapus -->
-    <div class="modal fade" id="modalDeleteRpm{{ item.id }}" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 border-top border-4 border-danger">
-            <div class="modal-header bg-danger text-white">
-            <h5 class="modal-title fw-bold">Usulkan Penghapusan RPM</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form action="/request_delete/{{ item.id }}" method="POST">
-                <div class="modal-body text-start">
-                <p class="text-dark">Anda mengajukan penghapusan LHA: <strong>{{ item.no_lha }}</strong>.</p>
-                <input type="password" class="form-control border-danger mt-1" name="password_otorisasi" required placeholder="Ketik Password Anda">
-                </div>
-                <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-danger fw-bold">Kirim Usulan</button>
-                </div>
-            </form>
-        </div>
-        </div>
-    </div>
+    <!-- Modal 2: Detail LHA & Modal 3: Hapus (Tidak perlu diubah, sudah responsive) -->
+    <div class="modal fade" id="modalDetail{{ item.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0"><div class="modal-header bg-cakrawala text-white"><h5 class="modal-title fw-bold">Rincian LHA</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><p class="text-dark mb-1"><strong>{{ item.unit_kerja }}</strong> ({{ item.jenis_audit }})</p><p class="border border-info p-2 rounded bg-light text-dark mb-3 mt-2">{{ item.deskripsi }}</p><h6 class="fw-bold text-nusantara mt-3">Internal:</h6><table class="table table-sm text-dark mb-3"><tr><td>Auditor:</td><td><strong>{{ item.nama_auditor }}</strong></td></tr><tr><td>Ketua Tim:</td><td><strong>{{ item.nama_ketua_tim }}</strong></td></tr></table><h6 class="fw-bold text-nusantara mt-3">Kontak Auditee:</h6><table class="table table-sm text-dark mb-3"><tr><td>PIC:</td><td><strong>{{ item.nama_pic }}</strong></td></tr><tr><td>WA PIC:</td><td><strong>{{ item.wa_auditee }}</strong></td></tr></table>{% if item.tgl_terima_dokumen %}<div class="alert alert-info py-2 my-3"><span class="fw-bold small">SLA Auditor:</span><br>Dokumen diterima <strong>{{ item.tgl_terima_dokumen.strftime('%d-%m-%Y') }}</strong></div>{% endif %}{% if item.no_ba_kesepakatan %}<div class="border border-warning p-2 rounded bg-light text-dark"><p class="mb-1"><strong>No. BA:</strong> {{ item.no_ba_kesepakatan }} (Tgl: {{ item.tgl_ba_kesepakatan.strftime('%d-%m-%Y') }})</p>{% if item.file_ba_kesepakatan %}<a href="/uploads/{{ item.file_ba_kesepakatan }}" target="_blank" class="btn btn-sm btn-outline-primary fw-bold mt-1">Lihat Dokumen</a>{% endif %}</div>{% endif %}</div></div></div></div>
+    
+    <div class="modal fade" id="modalDeleteRpm{{ item.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 border-top border-4 border-danger"><div class="modal-header bg-danger text-white"><h5 class="modal-title fw-bold">Usulkan Penghapusan</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><form action="/request_delete/{{ item.id }}" method="POST"><div class="modal-body text-start"><p class="text-dark">Hapus LHA: <strong>{{ item.no_lha }}</strong>?</p><input type="password" class="form-control border-danger mt-1" name="password_otorisasi" required placeholder="Ketik Password Anda"></div><div class="modal-footer border-0"><button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-danger fw-bold">Kirim Usulan</button></div></form></div></div></div>
     {% endfor %}
 
-    <!-- Script JavaScript Dual Filter -->
     <script>
-        // Filter Tab 1 (Tugas Saya)
         function applyFiltersTab1() {
-            let search = document.getElementById("searchInput1").value.toLowerCase();
-            let status = document.getElementById("f_status1").value;
-            let rows = document.querySelectorAll(".filter-row-1");
-            let visibleCount = 0;
-            
-            rows.forEach(row => {
-                let textData = row.getAttribute("data-search");
-                let r_stat = row.getAttribute("data-stat");
-                let matchSearch = textData.includes(search);
-                let matchStat = (status === "semua" || r_stat === status);
-                
-                if (matchSearch && matchStat) { row.style.display = ""; visibleCount++; } 
-                else { row.style.display = "none"; }
-            });
-            
-            // Cek kondisi awal saat halaman load apakah kosong dari DB
-            if (rows.length === 0) { document.getElementById("noDataMessage1").style.display = "block"; document.getElementById("noDataMessage1").innerText = "Belum ada tugas RPM yang ditugaskan kepada Anda."; }
-            else { document.getElementById("noDataMessage1").style.display = (visibleCount === 0) ? "block" : "none"; }
+            let search = document.getElementById("searchInput1").value.toLowerCase(); let status = document.getElementById("f_status1").value; let rows = document.querySelectorAll(".filter-row-1"); let visibleCount = 0;
+            rows.forEach(row => { let textData = row.getAttribute("data-search"); let r_stat = row.getAttribute("data-stat"); let matchSearch = textData.includes(search); let matchStat = (status === "semua" || r_stat === status);
+                if (matchSearch && matchStat) { row.style.display = ""; visibleCount++; } else { row.style.display = "none"; } });
+            if (rows.length === 0) { document.getElementById("noDataMessage1").style.display = "block"; document.getElementById("noDataMessage1").innerText = "Belum ada tugas untuk Anda."; } else { document.getElementById("noDataMessage1").style.display = (visibleCount === 0) ? "block" : "none"; }
         }
-
-        // Filter Tab 2 (Keseluruhan)
         function applyFiltersTab2() {
-            let search = document.getElementById("searchInput2").value.toLowerCase();
-            let lha = document.getElementById("f_lha2").value.toLowerCase();
-            let unit = document.getElementById("f_unit2").value.toLowerCase();
-            let auditor = document.getElementById("f_auditor2").value.toLowerCase();
-            let status = document.getElementById("f_status2").value;
-            let rows = document.querySelectorAll(".filter-row-2");
-            let visibleCount = 0;
-            
-            rows.forEach(row => {
-                let textData = row.getAttribute("data-search");
-                let r_lha = row.getAttribute("data-lha");
-                let r_unit = row.getAttribute("data-unit");
-                let r_aud = row.getAttribute("data-auditor");
-                let r_status = row.getAttribute("data-status");
-
-                let matchSearch = textData.includes(search);
-                let matchLha = r_lha.includes(lha);
-                let matchUnit = r_unit.includes(unit);
-                let matchAud = r_aud.includes(auditor);
-                let matchStatus = status === "" || r_status === status;
-                
-                if (matchSearch && matchLha && matchUnit && matchAud && matchStatus) { row.style.display = ""; visibleCount++; } 
-                else { row.style.display = "none"; }
-            });
+            let search = document.getElementById("searchInput2").value.toLowerCase(); let lha = document.getElementById("f_lha2").value.toLowerCase(); let unit = document.getElementById("f_unit2").value.toLowerCase(); let auditor = document.getElementById("f_auditor2").value.toLowerCase(); let status = document.getElementById("f_status2").value; let rows = document.querySelectorAll(".filter-row-2"); let visibleCount = 0;
+            rows.forEach(row => { let textData = row.getAttribute("data-search"); let r_lha = row.getAttribute("data-lha"); let r_unit = row.getAttribute("data-unit"); let r_aud = row.getAttribute("data-auditor"); let r_status = row.getAttribute("data-status"); let matchSearch = textData.includes(search); let matchLha = r_lha.includes(lha); let matchUnit = r_unit.includes(unit); let matchAud = r_aud.includes(auditor); let matchStatus = status === "" || r_status === status;
+                if (matchSearch && matchLha && matchUnit && matchAud && matchStatus) { row.style.display = ""; visibleCount++; } else { row.style.display = "none"; } });
             document.getElementById("noDataMessage2").style.display = (visibleCount === 0) ? "block" : "none";
         }
-
         document.querySelectorAll(".filter-input-1").forEach(el => { el.addEventListener("input", applyFiltersTab1); el.addEventListener("change", applyFiltersTab1); });
         document.querySelectorAll(".filter-input-2").forEach(el => { el.addEventListener("input", applyFiltersTab2); el.addEventListener("change", applyFiltersTab2); });
-        
-        document.getElementById("btnResetFilter2").addEventListener("click", function() { 
-            document.querySelectorAll(".filter-input-2").forEach(el => { el.value = ""; }); applyFiltersTab2(); 
-        });
-
-        // Jalankan filter saat halaman dimuat
-        applyFiltersTab1();
-        applyFiltersTab2();
+        document.getElementById("btnResetFilter2").addEventListener("click", function() { document.querySelectorAll(".filter-input-2").forEach(el => { el.value = ""; }); applyFiltersTab2(); });
+        applyFiltersTab1(); applyFiltersTab2();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
