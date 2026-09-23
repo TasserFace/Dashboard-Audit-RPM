@@ -2,23 +2,19 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- PENTING UNTUK MOBILE -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah RPM</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>body { font-family: 'Inter', sans-serif; color: #0857C3; background-color: #f8f9fa; } .bg-nusantara { background-color: #0857C3 !important; } .text-mentari { color: #71C5E8 !important; }</style>
 </head>
 <body>
-    <!-- Navbar Mobile Friendly -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
         <div class="container-fluid px-3 px-md-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
-            
-            <!-- Tombol Garis Tiga (Hamburger Menu) untuk HP -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0 mt-3 mt-lg-0">
                     <li class="nav-item"><a class="nav-link text-white" href="/">Ringkasan</a></li>
@@ -35,9 +31,13 @@
                         </a>
                     </li>
                 </ul>
-                <div class="d-flex flex-column flex-lg-row text-white align-items-lg-center mt-3 mt-lg-0">
-                    <span class="me-lg-3 mb-2 mb-lg-0 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
-                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold w-100 w-lg-auto">Logout</a>
+                <div class="d-flex flex-column flex-lg-row align-items-lg-center mt-4 mt-lg-0 gap-2 gap-lg-3">
+                    <div class="bg-white bg-opacity-10 border border-white border-opacity-25 rounded-pill px-3 py-2 d-flex align-items-center justify-content-center shadow-sm text-center">
+                        <span class="fw-bold text-white lh-sm" style="font-size: 0.85rem;">
+                            👋 Halo, {{ session['nama_lengkap'] }}
+                        </span>
+                    </div>
+                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold shadow-sm rounded-pill px-4 w-100 w-lg-auto">Logout</a>
                 </div>
             </div>
         </div>
@@ -53,9 +53,7 @@
             <div class="card-body p-4">
                 <form action="/input" method="POST">
                     <div class="mb-3"><label class="fw-bold">No. LHA</label><input type="text" class="form-control" name="no_lha" required placeholder="Contoh: LHA/IA/2026/001"></div>
-                    
-                    <div class="mb-3">
-                        <label class="fw-bold">Jenis Audit</label>
+                    <div class="mb-3"><label class="fw-bold">Jenis Audit</label>
                         <select class="form-select border-primary" name="jenis_audit" required>
                             <option value="" disabled selected>-- Pilih Jenis Audit --</option>
                             <option value="Reguler Audit">Reguler Audit</option>
@@ -64,26 +62,21 @@
                             <option value="Audit Investigasi">Audit Investigasi</option>
                         </select>
                     </div>
-
                     <div class="mb-3"><label class="fw-bold">Unit Kerja</label><input type="text" class="form-control" name="unit_kerja" required placeholder="Contoh: BO Jakarta"></div>
                     <div class="mb-3"><label class="fw-bold">Deskripsi Temuan</label><textarea class="form-control" name="deskripsi" rows="3" required placeholder="Uraikan temuan audit dan rekomendasi perbaikan..."></textarea></div>
                     <div class="mb-3"><label class="fw-bold">Tenggat Waktu</label><input type="date" class="form-control" name="tenggat_waktu" required></div>
-                    
                     <div class="row">
                         <div class="col-12 col-md-6 mb-3"><label class="fw-bold">Nama PIC Auditee</label><input type="text" class="form-control" name="nama_pic" required></div>
                         <div class="col-12 col-md-6 mb-3"><label class="fw-bold">No WA PIC</label><input type="text" class="form-control" name="wa_auditee" required placeholder="08xxxxxxxxxx"></div>
                     </div>
-                    
                     <div class="row">
                         <div class="col-12 col-md-6 mb-3"><label class="fw-bold">Nama Auditor</label><input type="text" class="form-control" name="nama_auditor" required></div>
                         <div class="col-12 col-md-6 mb-3"><label class="fw-bold">No WA Auditor</label><input type="text" class="form-control" name="wa_auditor" required placeholder="08xxxxxxxxxx"></div>
                     </div>
-                    
                     <div class="row">
                         <div class="col-12 col-md-6 mb-3"><label class="fw-bold">Nama Ketua Tim</label><input type="text" class="form-control" name="nama_ketua_tim" required></div>
                         <div class="col-12 col-md-6 mb-3"><label class="fw-bold text-primary">No WA Ketua Tim (Wajib Rekan/Atasan)</label><input type="text" class="form-control border-primary" name="wa_ketua_tim" required placeholder="08xxxxxxxxxx"></div>
                     </div>
-                    
                     <button type="submit" class="btn btn-primary bg-nusantara w-100 fw-bold py-2 mt-3 shadow-sm">Simpan Data RPM</button>
                 </form>
             </div>
