@@ -2,33 +2,36 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Persetujuan RPM</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; color: #0857C3; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; } .text-mentari { color: #71C5E8 !important; }</style>
+    <style>body { font-family: 'Inter', sans-serif; color: #0857C3; background-color: #f8f9fa; } .bg-nusantara { background-color: #0857C3 !important; } .text-nusantara { color: #0857C3 !important; } .text-mentari { color: #71C5E8 !important; }</style>
 </head>
-<body class="bg-light">
-    <!-- Navbar Bersih -->
+<body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-nusantara mb-4 shadow-sm">
-        <div class="container-fluid px-4">
+        <div class="container-fluid px-3 px-md-4">
             <a class="navbar-brand fw-bold text-white" href="/">Dashboard RPM</a>
-            <div class="collapse navbar-collapse">
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0 mt-3 mt-lg-0">
                     <li class="nav-item"><a class="nav-link text-white" href="/">Ringkasan</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="/monitoring">Monitoring RPM</a></li>
                     <li class="nav-item"><a class="nav-link text-white" href="/input">Tambah RPM</a></li>
                     <li class="nav-item"><a class="nav-link active fw-bold text-mentari" href="/approval">Menu Approval</a></li>
                 </ul>
-                <div class="d-flex text-white align-items-center ms-auto">
-                    <span class="me-3 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
-                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold">Logout</a>
+                <div class="d-flex flex-column flex-lg-row text-white align-items-lg-center mt-3 mt-lg-0">
+                    <span class="me-lg-3 mb-2 mb-lg-0 fw-bold">Halo, {{ session['nama_lengkap'] }}</span>
+                    <a href="/logout" class="btn btn-sm btn-light text-danger fw-bold w-100 w-lg-auto">Logout</a>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container">
-        <h4 class="fw-bold mb-4 text-nusantara">Daftar Menunggu Persetujuan Anda</h4>
+    <div class="container px-3 px-md-4">
+        <h4 class="fw-bold mb-4 text-nusantara text-center text-md-start">Daftar Menunggu Persetujuan Anda</h4>
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
         {% endwith %}
@@ -37,86 +40,47 @@
         <div class="card shadow-sm mb-3 border-0 border-start border-4 {% if item.usulan_status == 'HAPUS' %}border-danger{% else %}border-warning{% endif %}">
             <div class="card-body">
                 <div class="row align-items-center">
-                    <div class="col-md-7">
-                        <h5 class="fw-bold text-nusantara">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6">{{ item.jenis_audit }}</span></h5>
-                        <p class="mb-1 text-muted d-flex align-items-center">
-                            Diusulkan oleh: <strong class="ms-1 me-3">{{ item.nama_auditor }}</strong>
+                    <div class="col-12 col-md-7">
+                        <h5 class="fw-bold text-nusantara">{{ item.unit_kerja }} <span class="badge bg-secondary fs-6 mt-1 mt-md-0">{{ item.jenis_audit }}</span></h5>
+                        <p class="mb-2 text-muted small d-block d-md-flex align-items-center">
+                            <span class="d-block mb-1 mb-md-0">Diusulkan oleh: <strong class="ms-1 me-3">{{ item.nama_auditor }}</strong></span>
                             <button type="button" class="btn btn-sm btn-outline-info fw-bold text-dark py-0" data-bs-toggle="modal" data-bs-target="#modalDeskripsi{{ item.id }}">🔍 Lihat Deskripsi</button>
                         </p>
                         {% if item.usulan_status == 'HAPUS' %}
                         <div class="bg-danger bg-opacity-10 p-2 rounded mt-2 border border-danger">
-                            <h6 class="text-danger fw-bold mb-1">⚠️ USULAN PENGHAPUSAN PERMANEN</h6>
+                            <h6 class="text-danger fw-bold mb-1 small">⚠️ USULAN PENGHAPUSAN PERMANEN</h6>
                         </div>
                         {% else %}
-                        <div class="bg-light p-2 rounded mt-2 border">
+                        <div class="bg-light p-2 rounded mt-2 border small">
                             <strong>Perubahan Status:</strong> <span class="text-danger">{{ item.status }}</span> ➔ <span class="text-success fw-bold">{{ item.usulan_status }}</span>
                         </div>
                         {% endif %}
                     </div>
                     
-                    <div class="col-md-5 text-end border-start">
+                    <div class="col-12 col-md-5 text-start text-md-end mt-3 mt-md-0 pt-3 pt-md-0 border-top border-md-0">
                         <p class="small text-muted mb-2">Penanggung Jawab: <strong>{{ item.nama_ketua_tim }}</strong></p>
                         
-                        <!-- TOMBOL OTORISASI AKAN SELALU AKTIF KARENA SUDAH DIFILTER DARI DATABASE -->
-                        <form action="/process_approval/{{ item.id }}" method="POST" class="d-inline">
-                            <input type="hidden" name="action" value="tolak">
-                            <input type="hidden" name="password_otorisasi" value="tolak_sementara"> 
-                            <button type="submit" class="btn btn-outline-danger fw-bold me-2">Tolak</button>
-                        </form>
-                        <button class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success bg-nusantara{% endif %} fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">
-                            {% if item.usulan_status == 'HAPUS' %}Setujui Hapus{% else %}Setujui{% endif %}
-                        </button>
+                        <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2">
+                            <form action="/process_approval/{{ item.id }}" method="POST" class="w-100 w-md-auto">
+                                <input type="hidden" name="action" value="tolak">
+                                <input type="hidden" name="password_otorisasi" value="tolak_sementara"> 
+                                <button type="submit" class="btn btn-outline-danger fw-bold w-100">Tolak</button>
+                            </form>
+                            <button class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success bg-nusantara{% endif %} fw-bold shadow-sm w-100 w-md-auto" data-bs-toggle="modal" data-bs-target="#modalApprove{{ item.id }}">
+                                {% if item.usulan_status == 'HAPUS' %}Setujui Hapus{% else %}Setujui{% endif %}
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- MODAL DESKRIPSI -->
-        <div class="modal fade" id="modalDeskripsi{{ item.id }}" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 border-top border-4 border-info">
-                    <div class="modal-header bg-info text-dark">
-                        <h5 class="modal-title fw-bold">Detail Deskripsi</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body text-start">
-                        <p class="mb-1"><strong>LHA:</strong> {{ item.no_lha }}</p>
-                        <p class="border border-info p-3 rounded bg-light text-dark" style="white-space: pre-wrap;">{{ item.deskripsi }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div class="modal fade" id="modalDeskripsi{{ item.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 border-top border-4 border-info"><div class="modal-header bg-info text-dark"><h5 class="modal-title fw-bold">Detail Deskripsi</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body text-start"><p class="mb-1 small"><strong>LHA:</strong> {{ item.no_lha }}</p><p class="border border-info p-3 rounded bg-light text-dark small" style="white-space: pre-wrap;">{{ item.deskripsi }}</p></div></div></div></div>
 
-        <!-- MODAL OTORISASI -->
-        <div class="modal fade" id="modalApprove{{ item.id }}" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 {% if item.usulan_status == 'HAPUS' %}border-top border-4 border-danger{% endif %}">
-                    <div class="modal-header {% if item.usulan_status == 'HAPUS' %}bg-danger{% else %}bg-nusantara{% endif %} text-white">
-                        <h5 class="modal-title fw-bold">Otorisasi Persetujuan</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <form action="/process_approval/{{ item.id }}" method="POST">
-                        <div class="modal-body text-start">
-                            <input type="hidden" name="action" value="terima">
-                            {% if item.usulan_status == 'HAPUS' %}
-                            <div class="alert alert-danger bg-danger bg-opacity-10 text-danger border-danger fw-bold text-center px-2 py-3 mb-3">
-                                🛑 Yakin menyetujui PENGHAPUSAN PERMANEN?
-                            </div>
-                            {% endif %}
-                            <label class="fw-bold">Password Anda:</label>
-                            <input type="password" class="form-control mt-2" name="password_otorisasi" required>
-                        </div>
-                        <div class="modal-footer border-0">
-                            <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Batal</button>
-                            <button type="submit" class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success{% endif %} fw-bold">Verifikasi</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+        <div class="modal fade" id="modalApprove{{ item.id }}" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 {% if item.usulan_status == 'HAPUS' %}border-top border-4 border-danger{% endif %}"><div class="modal-header {% if item.usulan_status == 'HAPUS' %}bg-danger{% else %}bg-nusantara{% endif %} text-white"><h5 class="modal-title fw-bold">Otorisasi Persetujuan</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><form action="/process_approval/{{ item.id }}" method="POST"><div class="modal-body text-start"><input type="hidden" name="action" value="terima">{% if item.usulan_status == 'HAPUS' %}<div class="alert alert-danger bg-danger bg-opacity-10 text-danger border-danger fw-bold text-center px-2 py-3 mb-3 small">🛑 Yakin menyetujui PENGHAPUSAN PERMANEN?</div>{% endif %}<label class="fw-bold small">Password Anda:</label><input type="password" class="form-control mt-2" name="password_otorisasi" required></div><div class="modal-footer border-0"><button type="button" class="btn btn-secondary fw-bold w-100 w-sm-auto mb-2 mb-sm-0" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn {% if item.usulan_status == 'HAPUS' %}btn-danger{% else %}btn-success{% endif %} fw-bold w-100 w-sm-auto">Verifikasi</button></div></form></div></div></div>
         
         {% else %}
-        <div class="alert bg-mentari text-center fw-bold shadow-sm">🎉 Tidak ada usulan RPM yang menunggu persetujuan Anda.</div>
+        <div class="alert bg-mentari text-center fw-bold shadow-sm mt-4">🎉 Tidak ada usulan RPM yang menunggu persetujuan Anda.</div>
         {% endfor %}
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
